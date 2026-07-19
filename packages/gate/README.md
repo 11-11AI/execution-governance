@@ -17,9 +17,8 @@ import { createGate } from "@11ai/execution-governance";
 
 const gate = createGate({ policy: "./eg-policy.yaml" });
 
-const result = await gate.govern(
-  { sessionId: "s1", tool: "http.post", args: { url, body } },
-  () => fetch(url, { method: "POST", body }),
+const result = await gate.govern({ sessionId: "s1", tool: "http.post", args: { url, body } }, () =>
+  fetch(url, { method: "POST", body }),
 );
 ```
 

@@ -23,7 +23,9 @@ describe("local policy engine", () => {
   });
 
   it("denies exfiltration only when args carry secret material", async () => {
-    expect((await engine.evaluate(req("http.post", { body: "API_KEY=sk-1" }))).decision).toBe("deny");
+    expect((await engine.evaluate(req("http.post", { body: "API_KEY=sk-1" }))).decision).toBe(
+      "deny",
+    );
     // http.post without a secret matches no allow rule, so deny by default.
     const benign = await engine.evaluate(req("http.post", { body: "hello world" }));
     expect(benign.decision).toBe("deny");

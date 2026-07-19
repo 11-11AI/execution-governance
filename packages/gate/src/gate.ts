@@ -53,7 +53,8 @@ class GateImpl implements Gate {
   constructor(options: GateOptions) {
     // Engine: a supplied instance, or the local engine from a policy path.
     // A malformed policy throws here, so the gate is never silently permissive.
-    this.engine = typeof options.policy === "string" ? new LocalPolicyEngine(options.policy) : options.policy;
+    this.engine =
+      typeof options.policy === "string" ? new LocalPolicyEngine(options.policy) : options.policy;
 
     if (options.signingKey) {
       this.seed = options.signingKey;
@@ -90,7 +91,9 @@ class GateImpl implements Gate {
     try {
       r = JSON.parse(last) as Receipt;
     } catch (e) {
-      throw new Error(`fail-closed: existing receipt file is unreadable at the last line: ${(e as Error).message}`);
+      throw new Error(
+        `fail-closed: existing receipt file is unreadable at the last line: ${(e as Error).message}`,
+      );
     }
     return receiptHash(r);
   }
@@ -127,7 +130,8 @@ class GateImpl implements Gate {
         if (res.decision !== "allow" && res.decision !== "deny") {
           decision = "deny";
           reason = "fail-closed: engine returned a malformed decision";
-          policyVersion = typeof res.policyVersion === "string" ? res.policyVersion : this.safeVersion();
+          policyVersion =
+            typeof res.policyVersion === "string" ? res.policyVersion : this.safeVersion();
         } else {
           decision = res.decision;
           reason = res.reason;

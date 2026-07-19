@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { GateProxy, type ProxyIO } from "@11ai/mcp-gate";
-import type { ActionRequest, Decision, Gate, Receipt, VerifyReport } from "@11ai/execution-governance";
+import type {
+  ActionRequest,
+  Decision,
+  Gate,
+  Receipt,
+  VerifyReport,
+} from "@11ai/execution-governance";
 
 function fakeReceipt(id: string, decision: "allow" | "deny", reason: string): Receipt {
   return {
@@ -48,15 +54,30 @@ function collectIO() {
   return { io, state };
 }
 
-const allow = (): Decision => ({ decision: "allow", reason: "ok", policyVersion: "v", receipt: fakeReceipt("r-allow", "allow", "ok") });
-const deny = (): Decision => ({ decision: "deny", reason: "blocked", policyVersion: "v", receipt: fakeReceipt("r-deny", "deny", "blocked") });
+const allow = (): Decision => ({
+  decision: "allow",
+  reason: "ok",
+  policyVersion: "v",
+  receipt: fakeReceipt("r-allow", "allow", "ok"),
+});
+const deny = (): Decision => ({
+  decision: "deny",
+  reason: "blocked",
+  policyVersion: "v",
+  receipt: fakeReceipt("r-deny", "deny", "blocked"),
+});
 
 describe("mcp gate proxy", () => {
   it("a denied tools/call is not forwarded and the client gets a JSON-RPC error", async () => {
     const { io, state } = collectIO();
     const proxy = new GateProxy(new MockGate(deny), "srv", "sess", io);
     await proxy.handleClientLine(
-      JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "http_post", arguments: {} } }),
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "http_post", arguments: {} },
+      }),
     );
     expect(state.server).toEqual([]);
     expect(state.client.length).toBe(1);
@@ -69,7 +90,12 @@ describe("mcp gate proxy", () => {
   it("an allowed tools/call is forwarded unchanged", async () => {
     const { io, state } = collectIO();
     const proxy = new GateProxy(new MockGate(allow), "srv", "sess", io);
-    const line = JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "fs_read" } });
+    const line = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: { name: "fs_read" },
+    });
     await proxy.handleClientLine(line);
     expect(state.server).toEqual([line]);
     expect(state.client).toEqual([]);

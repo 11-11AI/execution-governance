@@ -43,7 +43,11 @@ class MalformedDecisionEngine implements PolicyEngine {
 
 describe("fail-closed", () => {
   it("an engine that throws results in deny", async () => {
-    const gate = createGate({ policy: new ThrowingEngine(), signingKey: KEY, receiptSink: () => {} });
+    const gate = createGate({
+      policy: new ThrowingEngine(),
+      signingKey: KEY,
+      receiptSink: () => {},
+    });
     const d = await gate.authorize(REQ);
     expect(d.decision).toBe("deny");
     expect(d.reason).toContain("fail-closed");
@@ -62,7 +66,11 @@ describe("fail-closed", () => {
   });
 
   it("an engine that returns a malformed decision results in deny", async () => {
-    const gate = createGate({ policy: new MalformedDecisionEngine(), signingKey: KEY, receiptSink: () => {} });
+    const gate = createGate({
+      policy: new MalformedDecisionEngine(),
+      signingKey: KEY,
+      receiptSink: () => {},
+    });
     const d = await gate.authorize(REQ);
     expect(d.decision).toBe("deny");
     expect(d.reason).toContain("fail-closed");
@@ -72,13 +80,15 @@ describe("fail-closed", () => {
     const dir = mkdtempSync(join(tmpdir(), "eg-"));
     const p = join(dir, "bad.yaml");
     writeFileSync(p, "rules:\n  - tool: x\n    effect: sometimes\n");
-    expect(() => createGate({ policy: p, signingKey: KEY, receiptSink: () => {} })).toThrow(/malformed policy/);
+    expect(() => createGate({ policy: p, signingKey: KEY, receiptSink: () => {} })).toThrow(
+      /malformed policy/,
+    );
   });
 
   it("a policy path that does not exist throws at construction", () => {
-    expect(() => createGate({ policy: "/no/such/policy.yaml", signingKey: KEY, receiptSink: () => {} })).toThrow(
-      /malformed policy/,
-    );
+    expect(() =>
+      createGate({ policy: "/no/such/policy.yaml", signingKey: KEY, receiptSink: () => {} }),
+    ).toThrow(/malformed policy/);
   });
 
   it("the starter policy denies an unmatched tool by default", async () => {
@@ -105,7 +115,11 @@ describe("fail-closed", () => {
   });
 
   it("remote engine malformed body results in deny", async () => {
-    const fetchImpl = (async () => ({ ok: true, status: 200, json: async () => ({ nope: true }) })) as unknown as typeof fetch;
+    const fetchImpl = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ nope: true }),
+    })) as unknown as typeof fetch;
     const eng = new RemotePolicyEngine({ url: "https://rt.test", apiKey: "k", fetchImpl });
     expect((await eng.evaluate(REQ)).decision).toBe("deny");
   });

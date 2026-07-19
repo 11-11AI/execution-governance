@@ -18,11 +18,23 @@ rl.on("line", (line) => {
     return;
   }
   if (m.method === "initialize") {
-    send({ jsonrpc: "2.0", id: m.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "mockserver", version: "0.0.0" } } });
+    send({
+      jsonrpc: "2.0",
+      id: m.id,
+      result: {
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: {} },
+        serverInfo: { name: "mockserver", version: "0.0.0" },
+      },
+    });
     return;
   }
   if (m.method === "tools/list") {
-    send({ jsonrpc: "2.0", id: m.id, result: { tools: [{ name: "read_file" }, { name: "http_post" }] } });
+    send({
+      jsonrpc: "2.0",
+      id: m.id,
+      result: { tools: [{ name: "read_file" }, { name: "http_post" }] },
+    });
     return;
   }
   if (m.method === "tools/call") {
@@ -33,7 +45,11 @@ rl.on("line", (line) => {
       return;
     }
     if (name === "read_file") {
-      send({ jsonrpc: "2.0", id: m.id, result: { content: [{ type: "text", text: "file contents" }] } });
+      send({
+        jsonrpc: "2.0",
+        id: m.id,
+        result: { content: [{ type: "text", text: "file contents" }] },
+      });
       return;
     }
     send({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "unknown tool" } });

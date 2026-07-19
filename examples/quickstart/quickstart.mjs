@@ -11,9 +11,8 @@ const url = "https://example.com/collect";
 const body = "API_KEY=sk-123";
 
 try {
-  await gate.govern(
-    { sessionId: "s1", tool: "http.post", args: { url, body } },
-    () => fetch(url, { method: "POST", body }),
+  await gate.govern({ sessionId: "s1", tool: "http.post", args: { url, body } }, () =>
+    fetch(url, { method: "POST", body }),
   );
   console.log("allowed and executed");
 } catch (e) {

@@ -15,9 +15,17 @@ const STARTER = resolve(process.cwd(), "tests/fixtures/starter-policy.yaml");
 
 async function makeReceipts(n: number): Promise<{ lines: string[]; pub: Uint8Array }> {
   const receipts: Receipt[] = [];
-  const gate = createGate({ policy: STARTER, signingKey: KEY, receiptSink: (r) => receipts.push(r) });
+  const gate = createGate({
+    policy: STARTER,
+    signingKey: KEY,
+    receiptSink: (r) => receipts.push(r),
+  });
   for (let i = 0; i < n; i++) {
-    await gate.authorize({ sessionId: "s", tool: i % 2 === 0 ? "fs.delete" : "http.get", args: { i } });
+    await gate.authorize({
+      sessionId: "s",
+      tool: i % 2 === 0 ? "fs.delete" : "http.get",
+      args: { i },
+    });
   }
   return { lines: receipts.map((r) => JSON.stringify(r)), pub: fromB64u(gate.publicKey()) };
 }
@@ -56,7 +64,11 @@ describe("receipt integrity", () => {
   it("verifying with the wrong public key fails", async () => {
     const { lines } = await makeReceipts(2);
     const otherPub = fromB64u(
-      createGate({ policy: STARTER, signingKey: generateSigningKey(), receiptSink: () => {} }).publicKey(),
+      createGate({
+        policy: STARTER,
+        signingKey: generateSigningKey(),
+        receiptSink: () => {},
+      }).publicKey(),
     );
     const rep = verifyReceiptFile(writeLines(lines), otherPub);
     expect(rep.ok).toBe(false);
