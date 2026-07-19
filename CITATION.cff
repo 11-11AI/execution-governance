@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Execution Governance"
+abstract: "Fail-closed pre-execution authorization for AI agent tool calls, with a signed receipt for every decision. Ships an SDK and an MCP proxy."
+type: software
+authors:
+  - name: "11/11 AI Research Division"
+version: "0.1.0"
+license: Apache-2.0
+repository-code: "https://github.com/11-11AI/execution-governance"
+url: "https://github.com/11-11AI/execution-governance"
+keywords:
+  - ai-agents
+  - authorization
+  - mcp
+  - guardrails
+  - security
+  - policy
+  - fail-closed
+  - audit
+# doi: add the Zenodo DOI here after the first GitHub release is archived
