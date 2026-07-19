@@ -15,7 +15,6 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "lint": "eslint . && prettier --check \"**/*.{ts,js,mjs,json,md,yaml,yml}\"",
     "format": "prettier --write \"**/*.{ts,js,mjs,json,md,yaml,yml}\"",

@@ -6,12 +6,36 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "bin": { "eg-verify": "./dist/cli/eg-verify.js" },
-  "files": ["dist"],
-  "engines": { "node": ">=18" },
-  "keywords": ["ai-agents", "authorization", "mcp", "guardrails", "security", "policy", "fail-closed", "audit"],
-  "scripts": { "build": "tsc -b" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "eg-verify": "./dist/cli/eg-verify.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ai-agents",
+    "authorization",
+    "mcp",
+    "guardrails",
+    "security",
+    "policy",
+    "fail-closed",
+    "audit"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
   "dependencies": {
     "@noble/hashes": "^1.4.0",
     "yaml": "^2.4.0"
