@@ -1,0 +1,38 @@
+# Execution Governance starter policy. Deny by default: a request that matches no
+# allow rule is denied. Regex patterns are single quoted so backslashes stay literal.
+version: "starter-1"
+
+actionClasses:
+  exfiltration:
+    tools:
+      ["http.post", "http.put", "http.patch", "https.post", "https.put", "*.upload", "*.send", "email.send", "webhook.*"]
+    argsPattern: '(secret|api[_-]?key|password|passwd|token|credential|\.env|private[_-]?key|BEGIN [A-Z ]*PRIVATE KEY|authorization:|aws_access|ssh-rsa)'
+  irreversible:
+    tools: ["fs.delete", "fs.rmdir", "shell.exec", "shell.*", "*.delete", "*.destroy", "*.drop", "db.drop*"]
+  spend:
+    tools: ["payments.*", "*.charge", "*.transfer", "*.pay", "*.purchase", "stripe.*", "wallet.send"]
+  identity-change:
+    tools: ["iam.*", "auth.*", "*.setrole", "*.set_role", "*.addkey", "*.add_key", "*.grant", "*.createuser"]
+
+rules:
+  - class: exfiltration
+    effect: deny
+    reason: "exfiltration: outbound call carrying secret material"
+  - class: irreversible
+    effect: deny
+    reason: "irreversible action denied by default"
+  - class: spend
+    effect: deny
+    reason: "spend action denied by default"
+  - class: identity-change
+    effect: deny
+    reason: "identity change denied by default"
+  - tool: "fs.read"
+    effect: allow
+    reason: "reads are allowed"
+  - tool: "http.get"
+    effect: allow
+    reason: "safe GET allowed"
+  - tool: "log.*"
+    effect: allow
+    reason: "logging allowed"
