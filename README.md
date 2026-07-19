@@ -3,11 +3,11 @@
 [![CI](https://github.com/AtlasQuantumProtocol/execution-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/AtlasQuantumProtocol/execution-governance/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Execution Governance™ is a fail-closed authorization gate for AI agent tool calls. It evaluates each action against a policy and returns allow or deny before the action runs, and it writes a signed receipt for every decision. The proprietary policy core stays behind an interface: this repository ships a small SDK, a basic local engine, an MCP proxy, and the receipt format.
+Pre-execution authorization for AI agent tool calls: allow or deny before execution, fail-closed, with a signed receipt for every decision.
 
 Request → Verify → Allow or Deny → Execute → Proof.
 
-Pre-execution authorization. Fail-closed enforcement. Cryptographic proof on every action.
+Execution Governance™ evaluates each action against a policy and returns allow or deny before the action runs, and writes a signed receipt for every decision. The proprietary policy core stays behind an interface: this repository ships a small SDK, a basic local engine, an MCP proxy, and the receipt format. Pre-execution authorization. Fail-closed enforcement. Cryptographic proof on every action.
 
 ## Packages
 
