@@ -99,6 +99,12 @@ Any error, timeout, unreachable engine, malformed policy, or missing decision re
 - Research corpus: [Zenodo, 11/11 AI community](https://zenodo.org/communities/11-11-ai).
 - Category paper: [Execution Governance: A Proposed Infrastructure Category, DOI 10.5281/zenodo.20453136](https://doi.org/10.5281/zenodo.20453136).
 
+## Disclaimer
+
+This software is provided under the Apache License 2.0, on an AS IS basis, without warranties or conditions of any kind. See the LICENSE for the full disclaimer of warranty and limitation of liability.
+
+Execution Governance enforces the policy you configure. It is one control, not a complete security solution, and it does not guarantee that every unsafe action is denied or that every safe action is allowed. You are responsible for your policy, your deployment, your signing keys, and the outcomes on your own systems. To the extent permitted by law, the authors and copyright holders are not liable for any harm to your systems, data, or operations, including missed denials, wrongful denials, downtime, or data loss, arising from the use of this software.
+
 ## License
 
 Apache-2.0. See LICENSE and NOTICE.
