@@ -1,0 +1,13 @@
+{
+  "name": "@11ai/mcp-gate",
+  "version": "0.1.0",
+  "description": "Fail-closed MCP proxy that gates agent tool calls with Execution Governance.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": { "mcp-gate": "./dist/cli.js" },
+  "files": ["dist"],
+  "engines": { "node": ">=18" },
+  "keywords": ["ai-agents", "authorization", "mcp", "guardrails", "security", "policy", "fail-closed", "audit"],
+  "scripts": { "build": "tsc -b" },
+  "dependencies": { "@11ai/execution-governance": "^0.1.0" }
+}

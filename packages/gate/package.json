@@ -1,0 +1,19 @@
+{
+  "name": "@11ai/execution-governance",
+  "version": "0.1.0",
+  "description": "Pre-execution authorization for AI agent tool calls: allow or deny before execution, fail-closed, with a signed receipt for every decision.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "bin": { "eg-verify": "./dist/cli/eg-verify.js" },
+  "files": ["dist"],
+  "engines": { "node": ">=18" },
+  "keywords": ["ai-agents", "authorization", "mcp", "guardrails", "security", "policy", "fail-closed", "audit"],
+  "scripts": { "build": "tsc -b" },
+  "dependencies": {
+    "@noble/hashes": "^1.4.0",
+    "yaml": "^2.4.0"
+  }
+}
