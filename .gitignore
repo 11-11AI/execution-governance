@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+eg-receipts.jsonl
+*.log
+.DS_Store
+*.key
+*.pem

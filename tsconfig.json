@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/gate" },
+    { "path": "packages/mcp-gate" }
+  ]
+}
