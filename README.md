@@ -1,6 +1,6 @@
 # Execution Governance
 
-[![CI](https://github.com/11ai/execution-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/11ai/execution-governance/actions/workflows/ci.yml)
+[![CI](https://github.com/11-11AI/execution-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/11-11AI/execution-governance/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 Pre-execution authorization for AI agent tool calls: allow or deny before execution, fail-closed, with a signed receipt for every decision.
