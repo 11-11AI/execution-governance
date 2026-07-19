@@ -1,0 +1,21 @@
+# Demo policy for the injection demo. Deny by default. The mock server exposes
+# read_file and http_post. Reads are allowed. An http_post that carries secret
+# material is classified as exfiltration and denied. Tool globs also match the
+# namespaced form (serverName.tool) so the same policy works behind mcp-gate.
+version: "demo-1"
+
+actionClasses:
+  exfiltration:
+    tools: ["http_post", "*.http_post", "http.post", "*.upload", "*.send"]
+    argsPattern: '(secret|api[_-]?key|password|passwd|token|credential|\.env|BEGIN [A-Z ]*PRIVATE KEY|authorization:)'
+
+rules:
+  - class: exfiltration
+    effect: deny
+    reason: "exfiltration: outbound POST carrying secret material"
+  - tool: "read_file"
+    effect: allow
+    reason: "reading local files is allowed"
+  - tool: "*.read_file"
+    effect: allow
+    reason: "reading local files is allowed"

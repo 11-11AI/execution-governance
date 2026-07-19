@@ -4,7 +4,9 @@
   "private": true,
   "description": "Fail-closed pre-execution authorization gate for AI agents. SDK plus MCP proxy. Signed receipt per action.",
   "type": "module",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "workspaces": [
     "packages/gate",
     "packages/mcp-gate",
@@ -17,7 +19,7 @@
     "test": "vitest run",
     "lint": "eslint . && prettier --check \"**/*.{ts,js,mjs,json,md,yaml,yml}\"",
     "format": "prettier --write \"**/*.{ts,js,mjs,json,md,yaml,yml}\"",
-    "demo": "npm run demo --workspace examples/injection-demo"
+    "demo": "npm run build && node examples/injection-demo/demo.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
