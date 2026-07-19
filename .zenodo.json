@@ -1,0 +1,19 @@
+{
+  "upload_type": "software",
+  "title": "Execution Governance: fail-closed pre-execution authorization for AI agents",
+  "description": "A fail-closed authorization gate for AI agent tool calls. It evaluates each action against a policy and returns allow or deny before the action runs, and writes a signed receipt for every decision. Ships an SDK and an MCP proxy.",
+  "creators": [{ "name": "11/11 AI Research Division" }],
+  "license": "Apache-2.0",
+  "access_right": "open",
+  "keywords": [
+    "ai-agents",
+    "authorization",
+    "mcp",
+    "guardrails",
+    "security",
+    "policy",
+    "fail-closed",
+    "audit"
+  ],
+  "communities": [{ "identifier": "11-11-ai" }]
+}
