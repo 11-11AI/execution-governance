@@ -9,15 +9,15 @@ version: "your-policy-1"
 
 actionClasses:
   <className>:
-    tools: [ <glob>, ... ]      # optional, matches the tool name
-    argsPattern: '<regex>'      # optional, matches the JSON string of args
+    tools: [<glob>, ...] # optional, matches the tool name
+    argsPattern: "<regex>" # optional, matches the JSON string of args
 
 rules:
-  - class: <className>          # match a named class, or
-    tool: <glob>                # match a tool glob, or
-    argsPattern: '<regex>'      # add a regex filter
+  - class: <className> # match a named class, or
+    tool: <glob> # match a tool glob, or
+    argsPattern: "<regex>" # add a regex filter
     effect: allow | deny
-    reason: "<short reason>"    # optional
+    reason: "<short reason>" # optional
 ```
 
 Rules are evaluated in order. The first matching rule wins. If no rule matches, the request is denied.
@@ -53,14 +53,45 @@ version: "starter-1"
 actionClasses:
   exfiltration:
     tools:
-      ["http.post", "http.put", "http.patch", "https.post", "https.put", "*.upload", "*.send", "email.send", "webhook.*"]
+      [
+        "http.post",
+        "http.put",
+        "http.patch",
+        "https.post",
+        "https.put",
+        "*.upload",
+        "*.send",
+        "email.send",
+        "webhook.*",
+      ]
     argsPattern: '(secret|api[_-]?key|password|passwd|token|credential|\.env|private[_-]?key|BEGIN [A-Z ]*PRIVATE KEY|authorization:|aws_access|ssh-rsa)'
   irreversible:
-    tools: ["fs.delete", "fs.rmdir", "shell.exec", "shell.*", "*.delete", "*.destroy", "*.drop", "db.drop*"]
+    tools:
+      [
+        "fs.delete",
+        "fs.rmdir",
+        "shell.exec",
+        "shell.*",
+        "*.delete",
+        "*.destroy",
+        "*.drop",
+        "db.drop*",
+      ]
   spend:
-    tools: ["payments.*", "*.charge", "*.transfer", "*.pay", "*.purchase", "stripe.*", "wallet.send"]
+    tools:
+      ["payments.*", "*.charge", "*.transfer", "*.pay", "*.purchase", "stripe.*", "wallet.send"]
   identity-change:
-    tools: ["iam.*", "auth.*", "*.setrole", "*.set_role", "*.addkey", "*.add_key", "*.grant", "*.createuser"]
+    tools:
+      [
+        "iam.*",
+        "auth.*",
+        "*.setrole",
+        "*.set_role",
+        "*.addkey",
+        "*.add_key",
+        "*.grant",
+        "*.createuser",
+      ]
 
 rules:
   - class: exfiltration

@@ -54,7 +54,9 @@ export class LocalPolicyEngine implements PolicyEngine {
     try {
       raw = parseYaml(readFileSync(policyPath, "utf8"));
     } catch (e) {
-      throw new Error(`malformed policy: cannot read or parse ${policyPath}: ${(e as Error).message}`);
+      throw new Error(
+        `malformed policy: cannot read or parse ${policyPath}: ${(e as Error).message}`,
+      );
     }
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       throw new Error("malformed policy: the root must be a mapping");
@@ -74,19 +76,26 @@ export class LocalPolicyEngine implements PolicyEngine {
         const d = def as Record<string, unknown>;
         const tools: RegExp[] = [];
         if (d.tools !== undefined) {
-          if (!Array.isArray(d.tools)) throw new Error(`malformed policy: actionClass ${name}.tools must be a list`);
+          if (!Array.isArray(d.tools))
+            throw new Error(`malformed policy: actionClass ${name}.tools must be a list`);
           for (const g of d.tools) {
-            if (typeof g !== "string") throw new Error(`malformed policy: actionClass ${name}.tools entries must be strings`);
+            if (typeof g !== "string")
+              throw new Error(
+                `malformed policy: actionClass ${name}.tools entries must be strings`,
+              );
             tools.push(globToRegExp(g));
           }
         }
         let argsRe: RegExp | undefined;
         if (d.argsPattern !== undefined) {
-          if (typeof d.argsPattern !== "string") throw new Error(`malformed policy: actionClass ${name}.argsPattern must be a string`);
+          if (typeof d.argsPattern !== "string")
+            throw new Error(`malformed policy: actionClass ${name}.argsPattern must be a string`);
           try {
             argsRe = new RegExp(d.argsPattern, "i");
           } catch (e) {
-            throw new Error(`malformed policy: actionClass ${name}.argsPattern is not a valid regex: ${(e as Error).message}`);
+            throw new Error(
+              `malformed policy: actionClass ${name}.argsPattern is not a valid regex: ${(e as Error).message}`,
+            );
           }
         }
         this.classes.set(name, { tools, argsRe });
@@ -97,25 +106,36 @@ export class LocalPolicyEngine implements PolicyEngine {
     if (rulesRaw !== undefined) {
       if (!Array.isArray(rulesRaw)) throw new Error("malformed policy: rules must be a list");
       rulesRaw.forEach((rr, i) => {
-        if (!rr || typeof rr !== "object" || Array.isArray(rr)) throw new Error(`malformed policy: rule ${i} must be a mapping`);
+        if (!rr || typeof rr !== "object" || Array.isArray(rr))
+          throw new Error(`malformed policy: rule ${i} must be a mapping`);
         const r = rr as Record<string, unknown>;
-        if (!isDecision(r.effect)) throw new Error(`malformed policy: rule ${i}.effect must be allow or deny`);
-        const rule: CompiledRule = { effect: r.effect, reason: typeof r.reason === "string" ? r.reason : "" };
+        if (!isDecision(r.effect))
+          throw new Error(`malformed policy: rule ${i}.effect must be allow or deny`);
+        const rule: CompiledRule = {
+          effect: r.effect,
+          reason: typeof r.reason === "string" ? r.reason : "",
+        };
         if (r.class !== undefined) {
-          if (typeof r.class !== "string") throw new Error(`malformed policy: rule ${i}.class must be a string`);
-          if (!this.classes.has(r.class)) throw new Error(`malformed policy: rule ${i} references unknown class ${r.class}`);
+          if (typeof r.class !== "string")
+            throw new Error(`malformed policy: rule ${i}.class must be a string`);
+          if (!this.classes.has(r.class))
+            throw new Error(`malformed policy: rule ${i} references unknown class ${r.class}`);
           rule.className = r.class;
         }
         if (r.tool !== undefined) {
-          if (typeof r.tool !== "string") throw new Error(`malformed policy: rule ${i}.tool must be a string`);
+          if (typeof r.tool !== "string")
+            throw new Error(`malformed policy: rule ${i}.tool must be a string`);
           rule.tool = globToRegExp(r.tool);
         }
         if (r.argsPattern !== undefined) {
-          if (typeof r.argsPattern !== "string") throw new Error(`malformed policy: rule ${i}.argsPattern must be a string`);
+          if (typeof r.argsPattern !== "string")
+            throw new Error(`malformed policy: rule ${i}.argsPattern must be a string`);
           try {
             rule.argsRe = new RegExp(r.argsPattern, "i");
           } catch (e) {
-            throw new Error(`malformed policy: rule ${i}.argsPattern is not a valid regex: ${(e as Error).message}`);
+            throw new Error(
+              `malformed policy: rule ${i}.argsPattern is not a valid regex: ${(e as Error).message}`,
+            );
           }
         }
         if (rule.className === undefined && rule.tool === undefined && rule.argsRe === undefined) {
@@ -146,7 +166,11 @@ export class LocalPolicyEngine implements PolicyEngine {
       argsStr = JSON.stringify(req.args ?? null) ?? "null";
     } catch {
       // Args that cannot be serialized cannot be evaluated safely. Deny.
-      return { decision: "deny", reason: "fail-closed: args are not serializable", policyVersion: this.policyVersion };
+      return {
+        decision: "deny",
+        reason: "fail-closed: args are not serializable",
+        policyVersion: this.policyVersion,
+      };
     }
 
     for (const rule of this.rules) {
@@ -160,10 +184,15 @@ export class LocalPolicyEngine implements PolicyEngine {
         if (match && rule.argsRe) match = rule.argsRe.test(argsStr);
       }
       if (match) {
-        const reason = rule.reason || `${rule.effect} by ${rule.className ? `class ${rule.className}` : "rule"}`;
+        const reason =
+          rule.reason || `${rule.effect} by ${rule.className ? `class ${rule.className}` : "rule"}`;
         return { decision: rule.effect, reason, policyVersion: this.policyVersion };
       }
     }
-    return { decision: "deny", reason: "no matching rule (deny by default)", policyVersion: this.policyVersion };
+    return {
+      decision: "deny",
+      reason: "no matching rule (deny by default)",
+      policyVersion: this.policyVersion,
+    };
   }
 }

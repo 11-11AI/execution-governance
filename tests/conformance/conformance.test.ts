@@ -31,7 +31,11 @@ describe("conformance", () => {
 
   it("monotone evidence growth: exactly one receipt per decision, count strictly increases", async () => {
     const receipts: Receipt[] = [];
-    const gate = createGate({ policy: STARTER, signingKey: KEY, receiptSink: (r) => receipts.push(r) });
+    const gate = createGate({
+      policy: STARTER,
+      signingKey: KEY,
+      receiptSink: (r) => receipts.push(r),
+    });
     let prev = receipts.length;
     for (const tool of ["http.get", "fs.delete", "http.get", "payments.charge"]) {
       await gate.authorize({ sessionId: "c", tool, args: {} });
@@ -54,7 +58,11 @@ describe("conformance", () => {
 
     // Allow path: the receipt (authorize) is recorded before the action runs.
     const order: string[] = [];
-    const g2 = createGate({ policy: STARTER, signingKey: KEY, receiptSink: () => order.push("receipt") });
+    const g2 = createGate({
+      policy: STARTER,
+      signingKey: KEY,
+      receiptSink: () => order.push("receipt"),
+    });
     await g2.govern({ sessionId: "c", tool: "http.get", args: {} }, async () => {
       order.push("action");
     });

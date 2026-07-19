@@ -51,23 +51,39 @@ export class RemotePolicyEngine implements PolicyEngine {
         signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch (e) {
-      return { decision: "deny", reason: `fail-closed: remote engine unreachable: ${(e as Error).message}`, policyVersion: "remote" };
+      return {
+        decision: "deny",
+        reason: `fail-closed: remote engine unreachable: ${(e as Error).message}`,
+        policyVersion: "remote",
+      };
     }
 
     if (!res.ok) {
-      return { decision: "deny", reason: `fail-closed: remote engine returned HTTP ${res.status}`, policyVersion: "remote" };
+      return {
+        decision: "deny",
+        reason: `fail-closed: remote engine returned HTTP ${res.status}`,
+        policyVersion: "remote",
+      };
     }
 
     let data: unknown;
     try {
       data = await res.json();
     } catch {
-      return { decision: "deny", reason: "fail-closed: remote engine returned a non-JSON body", policyVersion: "remote" };
+      return {
+        decision: "deny",
+        reason: "fail-closed: remote engine returned a non-JSON body",
+        policyVersion: "remote",
+      };
     }
 
     const d = data as Record<string, unknown> | null;
     if (!d || (d.decision !== "allow" && d.decision !== "deny")) {
-      return { decision: "deny", reason: "fail-closed: remote engine returned a malformed decision", policyVersion: "remote" };
+      return {
+        decision: "deny",
+        reason: "fail-closed: remote engine returned a malformed decision",
+        policyVersion: "remote",
+      };
     }
     return {
       decision: d.decision,

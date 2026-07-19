@@ -41,7 +41,10 @@ export function verifyReceiptFile(path: string, publicKey: Uint8Array): VerifyRe
     }
 
     if (r.prevReceiptHash !== prevHash) {
-      breaks.push({ line: ln, issue: "chain break: prevReceiptHash does not match the previous receipt" });
+      breaks.push({
+        line: ln,
+        issue: "chain break: prevReceiptHash does not match the previous receipt",
+      });
     }
     if (r.kid !== expectedKid) {
       breaks.push({ line: ln, issue: "kid does not match the provided public key" });

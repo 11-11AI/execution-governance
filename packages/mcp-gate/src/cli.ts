@@ -10,7 +10,13 @@
 import { spawn } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { createGate, fromB64u, RemotePolicyEngine, type GateOptions, type Receipt } from "@11ai/execution-governance";
+import {
+  createGate,
+  fromB64u,
+  RemotePolicyEngine,
+  type GateOptions,
+  type Receipt,
+} from "@11ai/execution-governance";
 import { deriveServerName, GateProxy, makeLineHandler } from "./proxy.js";
 
 function die(msg: string): never {
@@ -135,7 +141,9 @@ function main(): void {
   child.on("exit", (code) => shutdown(code ?? 0));
   child.on("error", (e) => die(`failed to start server: ${e.message}`));
 
-  process.stderr.write(`eg: gating ${serverName} declared tools, policy ${policyLabel}, fail-closed\n`);
+  process.stderr.write(
+    `eg: gating ${serverName} declared tools, policy ${policyLabel}, fail-closed\n`,
+  );
 }
 
 main();

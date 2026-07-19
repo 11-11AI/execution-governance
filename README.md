@@ -25,9 +25,8 @@ import { createGate } from "@11ai/execution-governance";
 
 const gate = createGate({ policy: "./eg-policy.yaml" });
 
-const result = await gate.govern(
-  { sessionId: "s1", tool: "http.post", args: { url, body } },
-  () => fetch(url, { method: "POST", body }),
+const result = await gate.govern({ sessionId: "s1", tool: "http.post", args: { url, body } }, () =>
+  fetch(url, { method: "POST", body }),
 );
 ```
 
@@ -59,7 +58,19 @@ An agent reads a briefing that carries a prompt injection telling it to exfiltra
 ## A receipt
 
 ```json
-{"receiptId":"019f7833-fddc-7a2b-8070-fa732536e98b","ts":"2026-07-19T02:30:00.000Z","sessionId":"s1","tool":"http.post","argsHash":"...","decision":"deny","reason":"exfiltration: outbound call carrying secret material","policyVersion":"starter-1","prevReceiptHash":"genesis","kid":"4a45b7f302b1db21","sig":"..."}
+{
+  "receiptId": "019f7833-fddc-7a2b-8070-fa732536e98b",
+  "ts": "2026-07-19T02:30:00.000Z",
+  "sessionId": "s1",
+  "tool": "http.post",
+  "argsHash": "...",
+  "decision": "deny",
+  "reason": "exfiltration: outbound call carrying secret material",
+  "policyVersion": "starter-1",
+  "prevReceiptHash": "genesis",
+  "kid": "4a45b7f302b1db21",
+  "sig": "..."
+}
 ```
 
 Each receipt is canonical JSON, sha3-512 hashed, Ed25519 signed, and chained. Verify a file with:

@@ -71,5 +71,17 @@ Exit code 0 means verified, 1 means at least one break was found.
 ## Example
 
 ```json
-{"receiptId":"019f7833-fddc-7a2b-8070-fa732536e98b","ts":"2026-07-19T02:30:00.000Z","sessionId":"s1","tool":"http.post","argsHash":"...","decision":"deny","reason":"exfiltration: outbound call carrying secret material","policyVersion":"starter-1","prevReceiptHash":"genesis","kid":"4a45b7f302b1db21","sig":"..."}
+{
+  "receiptId": "019f7833-fddc-7a2b-8070-fa732536e98b",
+  "ts": "2026-07-19T02:30:00.000Z",
+  "sessionId": "s1",
+  "tool": "http.post",
+  "argsHash": "...",
+  "decision": "deny",
+  "reason": "exfiltration: outbound call carrying secret material",
+  "policyVersion": "starter-1",
+  "prevReceiptHash": "genesis",
+  "kid": "4a45b7f302b1db21",
+  "sig": "..."
+}
 ```

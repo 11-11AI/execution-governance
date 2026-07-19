@@ -28,7 +28,11 @@ describe("red-team vectors", () => {
   });
 
   it("denies every adversarial vector under the starter policy (fail-closed)", async () => {
-    const gate = createGate({ policy: STARTER, signingKey: generateSigningKey(), receiptSink: () => {} });
+    const gate = createGate({
+      policy: STARTER,
+      signingKey: generateSigningKey(),
+      receiptSink: () => {},
+    });
     let denied = 0;
     const survivors: string[] = [];
     for (const v of vectors) {

@@ -8,9 +8,17 @@ const STARTER = resolve(process.cwd(), "tests/fixtures/starter-policy.yaml");
 describe("absorbing deny", () => {
   it("a deny absorbs through three chained calls", async () => {
     const receipts: Receipt[] = [];
-    const gate = createGate({ policy: STARTER, signingKey: KEY, receiptSink: (r) => receipts.push(r) });
+    const gate = createGate({
+      policy: STARTER,
+      signingKey: KEY,
+      receiptSink: (r) => receipts.push(r),
+    });
 
-    const d1 = await gate.authorize({ sessionId: "s", tool: "http.post", args: { body: "password=x" } });
+    const d1 = await gate.authorize({
+      sessionId: "s",
+      tool: "http.post",
+      args: { body: "password=x" },
+    });
     expect(d1.decision).toBe("deny");
 
     const d2 = await gate.authorize({
@@ -40,8 +48,18 @@ describe("absorbing deny", () => {
     const root = await gate.authorize({ sessionId: "s2", tool: "fs.delete", args: {} });
     expect(root.decision).toBe("deny");
 
-    const a = await gate.authorize({ sessionId: "s2", tool: "fs.read", args: {}, parentReceiptId: root.receipt.receiptId });
-    const b = await gate.authorize({ sessionId: "s2", tool: "fs.read", args: {}, parentReceiptId: root.receipt.receiptId });
+    const a = await gate.authorize({
+      sessionId: "s2",
+      tool: "fs.read",
+      args: {},
+      parentReceiptId: root.receipt.receiptId,
+    });
+    const b = await gate.authorize({
+      sessionId: "s2",
+      tool: "fs.read",
+      args: {},
+      parentReceiptId: root.receipt.receiptId,
+    });
 
     expect(a.decision).toBe("deny");
     expect(b.decision).toBe("deny");
@@ -54,7 +72,12 @@ describe("absorbing deny", () => {
     const gate = createGate({ policy: STARTER, signingKey: KEY, receiptSink: () => {} });
     const p = await gate.authorize({ sessionId: "s3", tool: "http.get", args: {} });
     expect(p.decision).toBe("allow");
-    const c = await gate.authorize({ sessionId: "s3", tool: "fs.read", args: {}, parentReceiptId: p.receipt.receiptId });
+    const c = await gate.authorize({
+      sessionId: "s3",
+      tool: "fs.read",
+      args: {},
+      parentReceiptId: p.receipt.receiptId,
+    });
     expect(c.decision).toBe("allow");
   });
 });
