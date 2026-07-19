@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Fail-closed MCP proxy that gates agent tool calls with Execution Governance.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/11-11AI/execution-governance.git",
+    "directory": "packages/mcp-gate"
+  },
+  "homepage": "https://github.com/11-11AI/execution-governance#readme",
+  "bugs": "https://github.com/11-11AI/execution-governance/issues",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "mcp-gate": "./dist/cli.js"
