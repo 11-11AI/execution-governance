@@ -35,7 +35,9 @@ function globToRegExp(glob: string): RegExp {
       out += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
   }
-  return new RegExp("^" + out + "$");
+  // Case-insensitive: tool names vary in casing across frameworks, and a security
+  // default should not be bypassable by changing case.
+  return new RegExp("^" + out + "$", "i");
 }
 
 function isDecision(x: unknown): x is DecisionValue {
