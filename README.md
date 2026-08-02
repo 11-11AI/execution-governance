@@ -47,7 +47,13 @@ Change the server command in your MCP client config to wrap it:
 
 ## Demo
 
-```
+The demo runs from a clone of this repository, not from the installed package.
+`npm run demo` is a script in this repo; installing the package does not provide it.
+
+```bash
+git clone https://github.com/11-11AI/execution-governance
+cd execution-governance
+npm install
 npm run demo
 ```
 
