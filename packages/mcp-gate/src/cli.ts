@@ -24,8 +24,35 @@ function die(msg: string): never {
   process.exit(1);
 }
 
+const USAGE = `mcp-gate — fail-closed MCP proxy. Gates tools/call against policy.
+
+Usage:
+  mcp-gate --policy <file> [options] -- <server-command> [args...]
+
+Options:
+  --policy <path>     policy file (required unless EG_CONTROL_PLANE_URL is set)
+  --receipts <path>   append signed receipts here (default ./eg-receipts.jsonl)
+  --key <path>        Ed25519 seed for a stable signing key
+  --timeout <ms>      policy evaluation timeout
+  --name <name>       server name recorded in receipts
+  -h, --help          show this help
+
+Typical use is in an MCP client config, wrapping an existing server:
+  "args": ["-y", "@11ai/mcp-gate", "--policy", "eg-policy.yaml", "--", "node", "server.js"]
+
+Docs: https://github.com/11-11AI/execution-governance`;
+
+// --help must succeed. Exiting non-zero on an explicit help request makes the
+// binary look broken to anyone checking whether the install worked.
+function helpAndExit(): never {
+  console.log(USAGE);
+  process.exit(0);
+}
+
 function parseArgs(argv: string[]) {
   const sep = argv.indexOf("--");
+  const beforeSep = sep >= 0 ? argv.slice(0, sep) : argv;
+  if (beforeSep.includes("--help") || beforeSep.includes("-h")) helpAndExit();
   const flags = sep >= 0 ? argv.slice(0, sep) : argv;
   const wrapped = sep >= 0 ? argv.slice(sep + 1) : [];
   const get = (name: string): string | undefined => {
