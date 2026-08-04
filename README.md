@@ -100,6 +100,27 @@ Any error, timeout, unreachable engine, malformed policy, or missing decision re
 - `docs/POLICY.md`: the policy schema and the canonical starter policy.
 - `RELEASING.md`: how to publish.
 
+## The rest of the project
+
+This repository is the SDK and MCP proxy. It lives in the
+[`11-11AI`](https://github.com/11-11AI) organisation; everything else lives in
+[`AtlasQuantumProtocol`](https://github.com/AtlasQuantumProtocol). If you arrived
+here from npm, these are the parts you cannot see from this repo:
+
+- [Doctrine](https://github.com/AtlasQuantumProtocol/execution-governance-doctrine)
+  — the eight principles the design follows, each with its verification path.
+- [verify-11ai-proof](https://github.com/AtlasQuantumProtocol/verify-11ai-proof)
+  — check the live control plane's signed governance decisions on your own
+  machine, no API key. Verifies Ed25519 locally; post-quantum requires
+  `liboqs-python` and is reported as skipped otherwise.
+- [Lineage verifier](https://github.com/AtlasQuantumProtocol/11-11-lineage-verifier)
+  — RFC-EG-0010 execution lineage, dual-hash chained, with a reference verifier.
+- [Governance profiles](https://github.com/AtlasQuantumProtocol/11-11-governance-profiles)
+  — machine-readable conformance profiles.
+- Live proof: <https://control.11aiblockchain.com/proof> (the evidence viewer)
+  and <https://11aiblockchain.com/proof> (the overview). These are two different
+  pages on two different hosts; the first serves the live EA-11 evidence record.
+
 ## Research
 
 - Research corpus: [Zenodo, 11/11 AI community](https://zenodo.org/communities/11-11-ai).
