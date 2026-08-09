@@ -126,9 +126,9 @@ This repository is the SDK and MCP proxy. It lives in the
 [`AtlasQuantumProtocol`](https://github.com/AtlasQuantumProtocol). If you arrived
 here from npm, these are the parts you cannot see from this repo:
 
-- [Doctrine](https://github.com/AtlasQuantumProtocol/execution-governance-doctrine)
+- [Doctrine](https://github.com/11-11AI/execution-governance-doctrine)
   — the eight principles the design follows, each with its verification path.
-- [verify-11ai-proof](https://github.com/AtlasQuantumProtocol/verify-11ai-proof)
+- [verify-11ai-proof](https://github.com/11-11AI/verify-11ai-proof)
   — check the live control plane's signed governance decisions on your own
   machine, no API key. Verifies Ed25519 locally; post-quantum requires
   `liboqs-python` and is reported as skipped otherwise.
