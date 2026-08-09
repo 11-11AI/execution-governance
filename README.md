@@ -7,7 +7,26 @@ Pre-execution authorization for AI agent tool calls: allow or deny before execut
 
 Request → Verify → Allow or Deny → Execute → Proof.
 
-Execution Governance™ evaluates each action against a policy and returns allow or deny before the action runs, and writes a signed receipt for every decision. The proprietary policy core stays behind an interface: this repository ships a small SDK, a basic local engine, an MCP proxy, and the receipt format. Pre-execution authorization. Fail-closed enforcement. Cryptographic proof on every action.
+Execution Governance evaluates each action against a policy and returns allow or deny before the action runs, and writes a signed receipt for every decision. The proprietary policy core stays behind an interface: this repository ships a small SDK, a basic local engine, an MCP proxy, and the receipt format. Pre-execution authorization. Fail-closed enforcement. Cryptographic proof on every action.
+
+![A prompt-injected agent tries to exfiltrate .env. The gate denies it before it runs, and the receipt chain verifies.](docs/img/demo.gif)
+
+An agent reads a briefing carrying a prompt injection, obeys it, and tries to
+POST the contents of `.env` to an attacker. The gate denies the call **before it
+executes** and the receipt chain verifies. That is the real program, unedited:
+
+```bash
+npm run demo
+```
+
+The GIF is generated from [`examples/injection-demo/demo.tape`](examples/injection-demo/demo.tape)
+with [vhs](https://github.com/charmbracelet/vhs), so it can be regenerated
+whenever the demo changes rather than drifting into showing output the code no
+longer produces:
+
+```bash
+vhs examples/injection-demo/demo.tape
+```
 
 ## Packages
 

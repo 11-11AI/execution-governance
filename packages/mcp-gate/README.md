@@ -99,6 +99,13 @@ mcp-gate --policy <file> [options] -- <server-command> [args...]
 | `-h`, `--help`      | Show usage and exit 0.                                                                                                        |
 | `--`                | Everything after is the wrapped server command, verbatim.                                                                     |
 
+> **Set `--key` before you rely on the receipts.** Without it, a new signing
+> key is generated per run and receipts cannot be verified across restarts.
+> Each run's receipts still verify against that run's own key, so nothing looks
+> broken — the failure only appears later, when you try to verify an older file
+> and no longer have the key it was signed with. The gate warns on startup when
+> it generates an ephemeral key.
+
 Exit behavior: if the wrapped server exits, the gate exits with the same
 code. If the gate cannot start (bad policy, missing binary), it exits
 nonzero and **no server starts** — fail-closed extends to process
