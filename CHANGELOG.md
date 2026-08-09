@@ -137,10 +137,17 @@ than a tag, because there is no tag to point at.
 This matters beyond tidiness: `.github/workflows/release.yml` triggers on `v*`
 tags, so from now on an untagged publish cannot happen through CI — but it also
 means the tag history has a hole where a release actually shipped. Creating
-`v0.1.1` retroactively at `01c5e00` would close it. That is a tagging action and
+`v0.1.1` retroactively at `d957635` would close it. That is a tagging action and
 is deliberately left to the repository owner.
 
+**Commit hashes on this page changed on 2026-08-09.** The public history of this
+repository was re-authored so that every author and committer line reads
+`11 AI <quantum@11aiblockchain.com>`. File content is byte-identical, commit
+counts are unchanged, and the published npm tarballs were not touched — their
+shasums still match what was published. Older references to hashes such as
+`01c5e00` will not resolve; `d957635` is the same commit.
+
 [Unreleased]: https://github.com/11-11AI/execution-governance/compare/v0.1.2...main
-[0.1.2]: https://github.com/11-11AI/execution-governance/compare/01c5e00...v0.1.2
-[0.1.1]: https://github.com/11-11AI/execution-governance/compare/v0.1.0...01c5e00
+[0.1.2]: https://github.com/11-11AI/execution-governance/compare/d957635...v0.1.2
+[0.1.1]: https://github.com/11-11AI/execution-governance/compare/v0.1.0...d957635
 [0.1.0]: https://github.com/11-11AI/execution-governance/releases/tag/v0.1.0
