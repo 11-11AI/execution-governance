@@ -102,9 +102,8 @@ Any error, timeout, unreachable engine, malformed policy, or missing decision re
 
 ## The rest of the project
 
-This repository is the SDK and MCP proxy. It lives in the
-[`11-11AI`](https://github.com/11-11AI) organisation; everything else lives in
-[`AtlasQuantumProtocol`](https://github.com/AtlasQuantumProtocol). If you arrived
+This repository is the SDK and MCP proxy. It and the rest of the open project
+live in the [`11-11AI`](https://github.com/11-11AI) organisation. If you arrived
 here from npm, these are the parts you cannot see from this repo:
 
 - [Doctrine](https://github.com/11-11AI/execution-governance-doctrine)
@@ -113,9 +112,9 @@ here from npm, these are the parts you cannot see from this repo:
   — check the live control plane's signed governance decisions on your own
   machine, no API key. Verifies Ed25519 locally; post-quantum requires
   `liboqs-python` and is reported as skipped otherwise.
-- [Lineage verifier](https://github.com/AtlasQuantumProtocol/11-11-lineage-verifier)
+- [Lineage verifier](https://github.com/11-11AI/11-11-lineage-verifier)
   — RFC-EG-0010 execution lineage, dual-hash chained, with a reference verifier.
-- [Governance profiles](https://github.com/AtlasQuantumProtocol/11-11-governance-profiles)
+- [Governance profiles](https://github.com/11-11AI/11-11-governance-profiles)
   — machine-readable conformance profiles.
 - Live proof: <https://control.11aiblockchain.com/proof> (the evidence viewer)
   and <https://11aiblockchain.com/proof> (the overview). These are two different
