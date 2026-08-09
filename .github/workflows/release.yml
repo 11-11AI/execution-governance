@@ -1,0 +1,86 @@
+# Publish both packages to npm on a version tag.
+#
+# TRUSTED PUBLISHING -- there is deliberately no NPM_TOKEN here.
+#
+# npm trusted publishing is configured for @11ai/execution-governance and
+# @11ai/mcp-gate and is bound to THIS FILE by path. Two consequences:
+#
+#   1. The filename must stay exactly `.github/workflows/release.yml`.
+#      Renaming or moving it breaks the binding and every publish fails.
+#   2. An NPM_TOKEN would be rejected. Do not add one, and do not "fix" a
+#      failing publish by adding one.
+#
+# Provenance is automatic under trusted publishing, so `--provenance` is not
+# passed explicitly. The OIDC exchange that replaces the token is what
+# `permissions: id-token: write` below enables; without it there is no
+# credential at all and the publish cannot authenticate.
+#
+# npm >= 11.5.1 is required for trusted publishing. `setup-node` pins Node, not
+# npm, and the npm bundled with Node 20 predates it, so npm is upgraded
+# explicitly rather than assumed.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required: this is what trusted publishing authenticates with
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs a newer npm than any Node release bundles.
+      - name: Upgrade npm
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      - run: npm ci
+
+      # Publishing an untested build is how a broken release reaches users who
+      # cannot un-install it. The tag is not evidence that CI passed on this
+      # commit, so the gates run again here.
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+
+      # The same tarball check CI runs on every PR, so a release cannot ship a
+      # tarball shape that a PR would have rejected.
+      - run: bash scripts/verify-tarball.sh
+
+      # Fail before publishing anything if the tag and the manifests disagree.
+      # Publishing package A at the tagged version and then discovering package
+      # B is stale leaves a half-released pair that cannot be unpublished after
+      # 72 hours.
+      - name: Tag must match both package versions
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for p in packages/gate packages/mcp-gate; do
+            V="$(node -p "require('./$p/package.json').version")"
+            N="$(node -p "require('./$p/package.json').name")"
+            if [ "$V" != "$TAG" ]; then
+              echo "::error::$N is $V but the tag is v$TAG"
+              exit 1
+            fi
+            echo "ok: $N@$V matches tag v$TAG"
+          done
+
+      # Published separately, in dependency order: mcp-gate depends on the gate
+      # SDK, so the SDK must exist at the new version first.
+      - name: Publish @11ai/execution-governance
+        run: npm publish
+        working-directory: packages/gate
+
+      - name: Publish @11ai/mcp-gate
+        run: npm publish
+        working-directory: packages/mcp-gate
