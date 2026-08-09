@@ -4,6 +4,25 @@ import { defaultJwksUrl, verifySignedDecision, type SignedDecisionEnvelope } fro
 // Remote policy engine. POSTs the request to EG_CONTROL_PLANE_URL with a bearer
 // token from EG_API_KEY. This is the hook for an out of process engine. Timeout,
 // non-200, or a malformed response all resolve to DENY. There is no fail-open path.
+//
+// ============================================================================
+// BREAKING IN 0.2.0 — DECISIONS MUST NOW BE SIGNED
+// ============================================================================
+// A decision that does not carry an Ed25519 signature verifying against the
+// engine's published JWKS is DENIED. Before 0.2.0 it was accepted.
+//
+// If you run a remote engine, it now has to publish a JWKS and sign its
+// decisions, or you must set `requireSignature: false` and understand that you
+// are choosing to accept an allow from anything that can answer the URL.
+//
+// Why this is on by default: without it, the transport is the authorization. A
+// compromised proxy, a DNS hijack, a misconfigured egress, or a local process
+// on the same port can all issue an allow. The signature is the only thing that
+// distinguishes the real control plane from something that merely answered.
+//
+// An unreachable JWKS also denies. A decision that cannot be verified has not
+// been made.
+// ============================================================================
 
 export interface RemotePolicyEngineOptions {
   url: string;
