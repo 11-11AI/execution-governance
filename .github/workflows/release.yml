@@ -39,10 +39,22 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
-      # Trusted publishing needs a newer npm than any Node release bundles.
-      - name: Upgrade npm
+      # Trusted publishing needs npm >= 11.5.1, which is newer than the npm
+      # bundled with Node 20.
+      #
+      # PINNED TO A MAJOR ON PURPOSE. This step was `npm@latest` and it broke the
+      # very first release: npm 12 raised its floor to Node ^22.22.2, the runner
+      # is on Node 20, and the job died with EBADENGINE before it reached a
+      # single test. `@latest` in a release workflow is an unpinned dependency
+      # that can only fail at the worst possible moment -- when you are cutting a
+      # release -- and it fails on someone else's schedule, not yours.
+      #
+      # npm 11.19.0 requires node ^20.17.0 || >=22.9.0, so it runs here, and it
+      # is well past 11.5.1. Raising Node to 22 would also work; pinning is the
+      # fix either way, because the moving target is the actual defect.
+      - name: Install npm with trusted-publishing support
         run: |
-          npm install -g npm@latest
+          npm install -g npm@^11
           npm --version
 
       - run: npm ci
