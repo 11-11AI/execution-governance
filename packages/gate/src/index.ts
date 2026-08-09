@@ -11,6 +11,6 @@ export {
   defaultJwksUrl,
   type SignedDecisionEnvelope,
 } from "./engines/jwks.js";
-export { verifyReceiptFile } from "./verify.js";
+export { verifyReceiptFile, type ReceiptKeySet } from "./verify.js";
 export { generateSigningKey, publicKeyBytes, fingerprint, toB64u, fromB64u } from "./crypto.js";
 export { jcs } from "./jcs.js";

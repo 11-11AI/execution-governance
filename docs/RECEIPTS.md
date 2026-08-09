@@ -85,3 +85,53 @@ Exit code 0 means verified, 1 means at least one break was found.
   "sig": "..."
 }
 ```
+
+## Verifying across a key rotation
+
+A receipt file outlives the key that signed its first line. Rotate a signing key
+and the file continues under a new `kid`.
+
+Pass every key the file spans:
+
+```ts
+import { verifyReceiptFile } from "@11ai/execution-governance";
+
+verifyReceiptFile("eg-receipts.jsonl", [oldPublicKey, newPublicKey]);
+```
+
+A single key still works and is exactly equivalent to a set of one, so nothing
+that calls this today needs changing:
+
+```ts
+verifyReceiptFile("eg-receipts.jsonl", publicKey);
+```
+
+A kid-keyed `Map` is also accepted, for callers that already hold fingerprints.
+
+### Unknown kid and invalid signature are different findings
+
+Verify a rotated file with only the old key and every line signed by the new one
+is reported as **`no supplied key matches kid …`** — not as an invalid
+signature.
+
+That distinction is the point of this feature. "Signature invalid" means the
+bytes do not match a key you hold: the file has been altered. "Unknown kid"
+means you are missing a key. Collapsing them turns _fetch the other public key_
+into _your evidence has been tampered with_, which is the worst possible framing
+of a routine operation, delivered to whoever is least equipped to dismiss it.
+
+### Rotating without breaking the chain
+
+Signature verification and chain verification are independent. A rotated file
+verifies signature-wise with both keys, but the `prevReceiptHash` chain must
+still be continuous across the switch.
+
+The default receipt sink handles this: it reads the existing file and continues
+from its head. **A custom `receiptSink` cannot**, because the gate has no idea
+where those receipts went — a new gate with a custom sink starts a fresh chain
+at `genesis`, and the verifier will correctly report a chain break at the
+rotation point.
+
+If you supply your own sink and rotate keys, you are responsible for chain
+continuity across the change. There is currently no option to seed a gate with
+an existing chain head.
