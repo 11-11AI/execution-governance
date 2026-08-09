@@ -1,0 +1,38 @@
+# Coding-agent starter policy: what an agent with push access may do to a repo.
+#
+# Deny by default. Rules are evaluated in order and the first match wins, so the
+# two denials are written above the allow. Reordering them would make the allow
+# swallow every push, which is why the order is load-bearing rather than
+# cosmetic.
+#
+# argsPattern is matched against JSON.stringify(args), so the patterns below
+# describe the serialised argument object rather than the source values. `\s*`
+# is tolerance for a serialiser that pretty prints; it costs nothing and removes
+# a way for this to quietly stop matching.
+version: "coding-agent-1"
+
+actionClasses:
+  # A force push rewrites history that other people have already pulled. It is
+  # the one git operation that destroys work rather than adding to it.
+  history-rewrite:
+    tools: ["git.push"]
+    argsPattern: '"force"\s*:\s*true'
+
+  # Direct pushes to an integration branch. Named explicitly rather than by
+  # pattern, because "which branches are protected" is a decision, not a guess.
+  protected-branch:
+    tools: ["git.push"]
+    argsPattern: '"branch"\s*:\s*"(main|master|release/[^"]*)"'
+
+rules:
+  - class: history-rewrite
+    effect: deny
+    reason: "force push rewrites published history"
+
+  - class: protected-branch
+    effect: deny
+    reason: "direct push to a protected branch; open a pull request"
+
+  - tool: "git.push"
+    effect: allow
+    reason: "push to a feature branch"

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Execution Governance pre-push hook.
+#
+# Install:
+#   cp examples/git-hook/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# Env:
+#   EG_MODE=shadow|enforce   default shadow. Shadow never blocks.
+#   EG_POLICY=<path>         default examples/git-hook/eg-policy.yaml
+#   EG_SIGNING_KEY=<path>    file holding a base64url Ed25519 seed. Optional, but
+#                            without it receipts are signed with a key that dies
+#                            with the process.
+set -euo pipefail
+
+_root="$(git rev-parse --show-toplevel)"
+
+# Force detection is done here rather than in the policy, because only git knows
+# it. A push is a force when the remote ref already exists and is NOT an
+# ancestor of what is being pushed -- that is precisely the case where history
+# someone else may have pulled is about to be replaced.
+#
+# git feeds "<local_ref> <local_sha> <remote_ref> <remote_sha>" on stdin, one
+# line per ref. The all-zero sha means the ref does not exist yet, which is a
+# new branch and not a force.
+force="false"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+remote_url="$(git remote get-url "${1:-origin}" 2>/dev/null || echo unknown)"
+zero="0000000000000000000000000000000000000000"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "${local_ref:-}" ] && continue
+  branch="${local_ref#refs/heads/}"
+  if [ -n "${remote_sha:-}" ] && [ "$remote_sha" != "$zero" ] && [ "${local_sha:-$zero}" != "$zero" ]; then
+    git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null || force="true"
+  fi
+done
+
+node "$_root/examples/git-hook/govern-push.mjs" \
+  --branch "$branch" \
+  --remote "$remote_url" \
+  --force "$force" \
+  --mode "${EG_MODE:-shadow}"
