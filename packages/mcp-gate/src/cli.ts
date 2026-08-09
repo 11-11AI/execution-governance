@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import {
   createGate,
   fromB64u,
+  LocalPolicyEngine,
   RemotePolicyEngine,
   type GateOptions,
   type Receipt,
@@ -35,6 +36,7 @@ Options:
   --key <path>        Ed25519 seed for a stable signing key
   --timeout <ms>      policy evaluation timeout
   --name <name>       server name recorded in receipts
+  --validate          check the policy and exit; starts no server
   -h, --help          show this help
 
 Typical use is in an MCP client config, wrapping an existing server:
@@ -65,8 +67,43 @@ function parseArgs(argv: string[]) {
     key: get("--key"),
     timeout: get("--timeout"),
     name: get("--name"),
+    validate: flags.includes("--validate"),
     wrapped,
   };
+}
+
+/**
+ * Check a policy and exit. Starts no server and writes no receipts.
+ *
+ * This deliberately runs the ENGINE'S OWN parser rather than validating against
+ * `schemas/eg-policy.schema.json`. The engine rejects things a JSON Schema
+ * cannot express -- a rule naming an actionClass that was never declared, an
+ * argsPattern that is not a compilable regex -- and those are the mistakes
+ * people actually make. A policy that satisfies the schema and fails here would
+ * still deny every call in production, so the schema is the weaker check and
+ * this is the one worth exiting non-zero on.
+ *
+ * The value is in the timing. Without it, the first evidence that a policy is
+ * broken is an MCP client failing to start, or -- worse under a remote engine
+ * -- every call being denied at runtime, which looks like a policy that is
+ * working very hard.
+ */
+function validateAndExit(policyPath: string): never {
+  try {
+    // LocalPolicyEngine, not createGate. createGate would generate a signing key
+    // and print an ephemeral-key warning, and a validate run that warns about
+    // keys it never uses trains people to ignore that warning where it matters.
+    // The engine constructor is also exactly where policy parsing happens, so
+    // this is the narrowest thing that can answer the question.
+    const engine = new LocalPolicyEngine(policyPath);
+    console.log(`policy OK: ${policyPath}`);
+    console.log(`  version: ${engine.version()}`);
+    process.exit(0);
+  } catch (e) {
+    console.error(`policy INVALID: ${policyPath}`);
+    console.error(`  ${(e as Error).message}`);
+    process.exit(1);
+  }
 }
 
 function loadKey(path: string): Uint8Array {
@@ -83,6 +120,15 @@ function loadKey(path: string): Uint8Array {
 
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
+
+  // Handled before the server-command check, because --validate deliberately
+  // takes no server command: it is the thing you run in CI, where there is no
+  // MCP client and nothing to wrap.
+  if (args.validate) {
+    if (!args.policy) die("--validate requires --policy <path>");
+    validateAndExit(args.policy);
+  }
+
   if (args.wrapped.length === 0) {
     die("no server command. Usage: mcp-gate --policy eg-policy.yaml -- <command> [args...]");
   }

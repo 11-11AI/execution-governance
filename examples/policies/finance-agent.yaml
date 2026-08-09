@@ -1,0 +1,110 @@
+# Finance-agent starter policy: an agent with access to money movement.
+#
+# This one is deliberately the most restrictive of the three, and the reasoning
+# is worth stating rather than assuming. A coding agent's worst mistake is
+# recoverable from a backup. A finance agent's worst mistake is a completed
+# transfer, and there is no undo. So every value-moving action is denied here
+# and the agent's useful surface is reading, reconciling, and drafting.
+#
+# THIS IS A STARTING POINT, NOT A COMPLIANCE CONTROL. It does not know your
+# limits, your segregation-of-duties rules, or which counterparties are
+# approved. It denies categories. Your controls live in the systems that
+# actually hold the money.
+#
+# Deny by default. First matching rule wins.
+version: "finance-agent-1"
+
+actionClasses:
+  # Moving value, in any direction, by any name.
+  value-transfer:
+    tools:
+      [
+        "payments.*",
+        "transfer.*",
+        "wire.*",
+        "ach.*",
+        "*.charge",
+        "*.refund",
+        "*.payout",
+        "*.transfer",
+        "*.send",
+        "wallet.*",
+        "stripe.*",
+        "treasury.*",
+      ]
+
+  # Changing where money can go. Attacks on finance systems more often change a
+  # destination than move a balance directly, because a changed destination is
+  # quieter and gets used repeatedly.
+  payee-change:
+    tools:
+      ["payee.*", "beneficiary.*", "vendor.*", "counterparty.*", "*.setAccount", "*.updateBank"]
+
+  # Raising or removing a limit. Denied for the same reason as the transfer
+  # itself: a limit that an agent can change is not a limit.
+  limit-change:
+    tools: ["limits.*", "*.setLimit", "*.raiseLimit", "*.overrideLimit", "risk.*"]
+
+  # Approvals. An agent approving its own drafted transaction collapses
+  # segregation of duties into one actor.
+  approval:
+    tools: ["*.approve", "*.authorize", "*.sign", "*.countersign", "*.release"]
+
+  # Ledger edits. A ledger you can rewrite is a record of nothing.
+  ledger-mutation:
+    tools: ["ledger.write*", "ledger.update*", "ledger.delete*", "journal.*", "*.reclassify"]
+
+  # Bulk export of transaction or customer data.
+  bulk-export:
+    tools: ["export.*", "report.download*", "*.dump", "*.bulkExport"]
+
+rules:
+  - class: value-transfer
+    effect: deny
+    reason: "money movement requires a human; a completed transfer has no undo"
+
+  - class: payee-change
+    effect: deny
+    reason: "changing a payment destination requires a human"
+
+  - class: limit-change
+    effect: deny
+    reason: "a limit an agent can raise is not a limit"
+
+  - class: approval
+    effect: deny
+    reason: "approval requires a second human actor, not the agent that drafted it"
+
+  - class: ledger-mutation
+    effect: deny
+    reason: "ledger entries are append-only to anything but a person"
+
+  - class: bulk-export
+    effect: deny
+    reason: "bulk export of financial or customer records requires a human"
+
+  # What is left is a genuinely useful agent: it can read positions, reconcile,
+  # compute, and prepare work for a person to approve. Drafting is explicitly
+  # allowed because a draft is not an instruction -- it becomes one only at the
+  # approval step, which is denied above.
+  - tool: "ledger.read*"
+    effect: allow
+    reason: "reading the ledger allowed"
+  - tool: "account.read*"
+    effect: allow
+    reason: "reading account state allowed"
+  - tool: "balance.*"
+    effect: allow
+    reason: "balance queries allowed"
+  - tool: "transaction.list*"
+    effect: allow
+    reason: "listing transactions allowed"
+  - tool: "reconcile.*"
+    effect: allow
+    reason: "reconciliation allowed"
+  - tool: "*.draft"
+    effect: allow
+    reason: "drafting allowed; a draft is not an instruction until it is approved"
+  - tool: "report.generate*"
+    effect: allow
+    reason: "generating a report allowed; downloading it in bulk is not"
