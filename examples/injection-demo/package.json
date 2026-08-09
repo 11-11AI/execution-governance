@@ -7,7 +7,7 @@
     "demo": "node demo.mjs"
   },
   "dependencies": {
-    "@11ai/execution-governance": "^0.1.0",
+    "@11ai/execution-governance": "^0.2.0",
     "@11ai/mcp-gate": "^0.1.0"
   }
 }

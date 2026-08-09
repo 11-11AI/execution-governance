@@ -39,12 +39,33 @@ Nothing yet.
 
 ### Added
 
+- **`verifyReceiptFile` accepts multiple keys**, so a receipt file spanning a key
+  rotation can be verified in one pass: a single key, an array, or a kid-keyed
+  `Map`. The single-key call shape is unchanged and is exactly equivalent to a
+  set of one.
+
+  A line whose `kid` matches no supplied key is now reported as an **unknown
+  kid**, distinct from an **invalid signature**. The two need different
+  responses: one means you are missing a key, the other means the file has been
+  altered. Reporting a rotation as tampering was the actual defect.
+
+  Note that signature verification and chain verification are independent.
+  Rotating a key while using a custom `receiptSink` starts a fresh chain at
+  `genesis`, because the gate cannot know where a custom sink put the previous
+  receipts. See `docs/RECEIPTS.md`.
+
 - **JWKS verification primitives**, exported for anyone implementing the same
   check elsewhere: `verifySignedDecision`, `defaultJwksUrl`, and the
   `SignedDecisionEnvelope` type.
 - `RemotePolicyEngineOptions` gains `jwksUrl` (defaults to the control-plane
   origin + `/.well-known/jwks.json`) and `requireSignature` (defaults to
   `true`). `EG_JWKS_URL` and `EG_REQUIRE_SIGNATURE` are read by `fromEnv`.
+
+### Changed
+
+- Examples pin `^0.2.0`. They previously pinned `^0.1.0` and resolve through the
+  workspace, so nothing was broken, but the version a reader copies should be
+  the one that exists.
 
 ### Notes for implementers
 
