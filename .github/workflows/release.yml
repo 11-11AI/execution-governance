@@ -36,7 +36,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "24"
           registry-url: https://registry.npmjs.org
 
       # Trusted publishing needs npm >= 11.5.1, which is newer than the npm
@@ -52,10 +52,36 @@ jobs:
       # npm 11.19.0 requires node ^20.17.0 || >=22.9.0, so it runs here, and it
       # is well past 11.5.1. Raising Node to 22 would also work; pinning is the
       # fix either way, because the moving target is the actual defect.
+      # Trusted publishing needs npm >= 11.5.1.
+      #
+      # Node 24 is chosen so the runtime sits inside the support window of a
+      # current npm rather than at its edge. The first release died here on
+      # EBADENGINE: the step was `npm@latest`, npm 12 had raised its floor to
+      # Node ^22.22, and the runner was on Node 20. Nothing published.
+      #
+      # The npm version is still PINNED to a major rather than tracking latest.
+      # Node 24 removes today's incompatibility; the pin removes the class of
+      # failure. `@latest` in a release workflow is an unpinned dependency that
+      # can only break while you are cutting a release, and it moves on npm's
+      # schedule rather than yours.
+      #
+      # The floor is then asserted rather than assumed. Without this, an npm
+      # older than 11.5.1 fails much later, at `npm publish`, as an
+      # authentication error -- which reads as a credentials problem and invites
+      # someone to "fix" it by adding a token that trusted publishing rejects.
       - name: Install npm with trusted-publishing support
         run: |
           npm install -g npm@^11
-          npm --version
+          NPM_V="$(npm --version)"
+          echo "npm $NPM_V on node $(node --version)"
+          node -e '
+            const [a, b, c] = process.argv[1].split(".").map(Number);
+            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) {
+              console.error(`::error::npm ${process.argv[1]} is below 11.5.1, which trusted publishing requires`);
+              process.exit(1);
+            }
+            console.log("npm supports trusted publishing");
+          ' "$NPM_V"
 
       - run: npm ci
 
