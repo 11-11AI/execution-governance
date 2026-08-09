@@ -89,15 +89,15 @@ per tool, argument matching, path and URL constraints. Full schema:
 mcp-gate --policy <file> [options] -- <server-command> [args...]
 ```
 
-| Flag                | Purpose                                                                                                                       |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `--policy <path>`   | Policy file. Required unless `EG_CONTROL_PLANE_URL` is set. Malformed policy = every call denied.                             |
-| `--receipts <path>` | Append signed receipts here (default `./eg-receipts.jsonl`).                                                                  |
-| `--key <path>`      | Ed25519 seed for a stable signing key. Without it a key is generated per run and receipts are not verifiable across restarts. |
-| `--timeout <ms>`    | Policy evaluation timeout. A timeout is a deny.                                                                               |
-| `--name <name>`     | Server name recorded in receipts.                                                                                             |
-| `-h`, `--help`      | Show usage and exit 0.                                                                                                        |
-| `--`                | Everything after is the wrapped server command, verbatim.                                                                     |
+| Flag                | Purpose                                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `--policy <path>`   | Policy file. Required unless `EG_CONTROL_PLANE_URL` is set. Malformed policy = every call denied.                                 |
+| `--receipts <path>` | Append signed receipts here (default `./eg-receipts.jsonl`).                                                                      |
+| `--key <path>`      | Ed25519 seed for a stable signing key. Without it a key is generated per run and receipts are not verifiable across restarts.     |
+| `--timeout <ms>`    | Policy evaluation timeout. A timeout is a deny.                                                                                   |
+| `--name <name>`     | Tool namespace prefix. Defaults to a name derived from the wrapped command. See the warning below — this affects policy matching. |
+| `-h`, `--help`      | Show usage and exit 0.                                                                                                            |
+| `--`                | Everything after is the wrapped server command, verbatim.                                                                         |
 
 > **Set `--key` before you rely on the receipts.** Without it, a new signing
 > key is generated per run and receipts cannot be verified across restarts.
@@ -105,6 +105,14 @@ mcp-gate --policy <file> [options] -- <server-command> [args...]
 > broken — the failure only appears later, when you try to verify an older file
 > and no longer have the key it was signed with. The gate warns on startup when
 > it generates an ephemeral key.
+
+> **`--name` is part of what your policy matches on.** Tool calls are evaluated
+> as `<name>.<tool>`, so a rule written for `their-server.http_post` stops
+> matching if the prefix changes. The default is derived from the wrapped
+> command, which means editing the command in your client config can change the
+> prefix as a side effect — and a rule that no longer matches is a rule that no
+> longer denies. Set `--name` explicitly and the prefix stops depending on how
+> the server happens to be launched.
 
 Exit behavior: if the wrapped server exits, the gate exits with the same
 code. If the gate cannot start (bad policy, missing binary), it exits
