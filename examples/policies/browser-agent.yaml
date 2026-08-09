@@ -1,0 +1,90 @@
+# Browser-agent starter policy: an agent driving a real browser session.
+#
+# The threat here is different from a coding agent's. A browser agent reads
+# attacker-controlled text on every page it visits, so prompt injection is not
+# an edge case, it is the normal operating condition. The agent will at some
+# point be told by a web page to do something. This policy is about what happens
+# next.
+#
+# Deny by default. First matching rule wins, so denials are written above the
+# allows and the order is load-bearing.
+version: "browser-agent-1"
+
+actionClasses:
+  # The session cookie IS the logged-in account. An agent that can read it can
+  # hand over the account without ever touching a password.
+  session-credential:
+    tools: ["browser.cookies*", "browser.storage*", "browser.localStorage*", "*.getCookies"]
+
+  # Typing into a password or payment field. A page can label a field anything,
+  # so this matches on the value being typed rather than trusting the label.
+  credential-entry:
+    tools: ["browser.type", "browser.fill", "browser.setValue", "*.input"]
+    argsPattern: "(password|passwd|credit[_-]?card|cvv|card[_-]?number|ssn|secret|api[_-]?key|otp|2fa|mfa[_-]?code)"
+
+  # Uploading a local file to a page. The agent chooses the path, and the page
+  # asked for it -- which is the exfiltration shape with a file picker in front.
+  file-upload:
+    tools: ["browser.upload", "browser.setInputFiles", "*.attachFile"]
+
+  # Downloading and running. Two separate capabilities that are only dangerous
+  # together, which is why they are one class.
+  download-execute:
+    tools: ["browser.download*", "shell.*", "process.*", "*.exec"]
+
+  # Anything that spends or transfers. Named by intent because a checkout button
+  # is a click like any other and the tool name will not say so.
+  transaction:
+    tools: ["browser.click", "browser.press", "*.submit"]
+    argsPattern: "(checkout|place[_ ]?order|buy[_ ]?now|confirm[_ ]?payment|transfer|send[_ ]?money|withdraw|approve[_ ]?transaction|delete[_ ]?account)"
+
+rules:
+  - class: session-credential
+    effect: deny
+    reason: "reading session cookies or storage exposes the logged-in account"
+
+  - class: credential-entry
+    effect: deny
+    reason: "entering a credential or payment detail requires a human"
+
+  - class: file-upload
+    effect: deny
+    reason: "uploading a local file to a page is exfiltration with a file picker"
+
+  - class: download-execute
+    effect: deny
+    reason: "downloading or executing from a browsing session denied by default"
+
+  - class: transaction
+    effect: deny
+    reason: "irreversible or spending interaction requires a human"
+
+  # Reading and moving around the web is the entire point of a browser agent, so
+  # navigation and extraction are allowed. Note what this does NOT do: it does
+  # not trust the page. Everything the agent reads here is untrusted input, and
+  # the denials above are what stands between that input and consequence.
+  - tool: "browser.goto"
+    effect: allow
+    reason: "navigation allowed"
+  - tool: "browser.screenshot"
+    effect: allow
+    reason: "screenshot allowed"
+  - tool: "browser.extract*"
+    effect: allow
+    reason: "reading page content allowed"
+  - tool: "browser.scroll"
+    effect: allow
+    reason: "scrolling allowed"
+  - tool: "browser.back"
+    effect: allow
+    reason: "history navigation allowed"
+
+  # Ordinary clicking and typing, having survived the classes above. This rule
+  # is last on purpose: it is broad, and anything broad placed higher would
+  # swallow the denials.
+  - tool: "browser.click"
+    effect: allow
+    reason: "ordinary click allowed"
+  - tool: "browser.type"
+    effect: allow
+    reason: "ordinary typing allowed"
