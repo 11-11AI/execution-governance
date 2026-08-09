@@ -38,9 +38,7 @@
     "prompt-injection",
     "agent-security",
     "tool-calling",
-    "langchain",
-    "claude",
-    "openai-agents"
+    "claude"
   ],
   "scripts": {
     "build": "tsc -b"
