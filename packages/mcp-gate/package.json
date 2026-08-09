@@ -33,7 +33,14 @@
     "security",
     "policy",
     "fail-closed",
-    "audit"
+    "audit",
+    "mcp-proxy",
+    "prompt-injection",
+    "agent-security",
+    "tool-calling",
+    "langchain",
+    "claude",
+    "openai-agents"
   ],
   "scripts": {
     "build": "tsc -b"
