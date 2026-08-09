@@ -1,12 +1,38 @@
+<p align="center">
+  <img src="https://11aiblockchain.com/npm-banner.png" alt="11/11 AI — Execution Governance" width="480" />
+</p>
+
 # @11ai/mcp-gate
 
-A fail-closed stdio MCP proxy. It sits between an MCP client and an MCP server, evaluates every tool call against an Execution Governance policy, and denies before the call reaches the server. Every decision produces a signed receipt.
+[![npm version](https://img.shields.io/npm/v/@11ai/mcp-gate.svg)](https://www.npmjs.com/package/@11ai/mcp-gate)
+[![npm downloads](https://img.shields.io/npm/dm/@11ai/mcp-gate.svg)](https://www.npmjs.com/package/@11ai/mcp-gate)
+[![CI](https://github.com/11-11AI/execution-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/11-11AI/execution-governance/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/11-11AI/execution-governance/blob/main/LICENSE)
 
-Request, Verify, Allow or Deny, Execute, Proof.
+**A firewall for MCP tool calls. Add one line to your config — no code changes.**
 
-## One line to gate an existing server
+`mcp-gate` is a fail-closed stdio proxy that sits between any MCP client
+(Claude Desktop, Claude Code, Cursor, anything) and any MCP server. Every
+`tools/call` is checked against your policy before it's forwarded. Denied
+calls never reach the server — the client gets a JSON-RPC error and a
+signed receipt records the attempt.
 
-Change the server command in your MCP client config to wrap it:
+No API key. No network. No telemetry.
+
+## One-line install
+
+Wrap any MCP server by changing its command in your client config:
+
+**Before**
+
+```json
+{
+  "command": "node",
+  "args": ["their-server.js"]
+}
+```
+
+**After**
 
 ```json
 {
@@ -15,20 +41,105 @@ Change the server command in your MCP client config to wrap it:
 }
 ```
 
-The proxy spawns the wrapped server, forwards `initialize`, `tools/list`, resources, and notifications untouched, and gates `tools/call`. A denied call is answered to the client with a JSON-RPC error and is never forwarded to the server.
+That's it. `initialize`, `tools/list`, resources, and notifications pass
+through untouched. Only `tools/call` is gated.
 
-## Flags
+## Why you want this
 
-- `--policy <path>`: policy file, required unless `EG_CONTROL_PLANE_URL` is set.
-- `--receipts <path>`: where receipts are written. Default `./eg-receipts.jsonl`.
-- `--key <path>`: Ed25519 seed file, base64url or hex, for a stable signing key.
-- `--timeout <ms>`: decision timeout. A timeout is a deny.
-- `--name <serverName>`: tool namespace prefix. Default derived from the command.
+MCP servers run with your credentials and your filesystem. A
+prompt-injected agent can call any tool the server exposes — exfiltrate
+secrets, POST data to attacker URLs, delete files. Reviewing logs
+afterward doesn't undo it.
 
-## Fail-closed
+`mcp-gate` decides **before** the call runs:
 
-If the policy is malformed the proxy exits before starting the server. If the gate throws while making a decision, the proxy exits rather than pass traffic ungated. A denied tool call is never forwarded.
+- **Deny by policy** — block outbound calls carrying secret material,
+  writes outside allowed paths, dangerous shell commands, whatever your
+  policy says.
+- **Fail-closed** — engine error, timeout, malformed policy? The call is
+  denied. There is no fail-open path.
+- **Signed receipts** — every allow and every deny is Ed25519-signed,
+  SHA3-512 hashed, and chained. Verify the file offline with `eg-verify`,
+  no access to the machine required.
+
+## What a denial looks like
+
+The client receives a JSON-RPC error instead of a tool result, and the
+receipt log records:
+
+```json
+{
+  "tool": "http.post",
+  "decision": "deny",
+  "reason": "exfiltration: outbound call carrying secret material",
+  "policyVersion": "starter-1",
+  "sig": "…"
+}
+```
+
+## Policy
+
+Start from the canonical starter policy and edit YAML — allow/deny rules
+per tool, argument matching, path and URL constraints. Full schema:
+[docs/POLICY.md](https://github.com/11-11AI/execution-governance/blob/main/docs/POLICY.md).
+
+## CLI reference
+
+```
+mcp-gate --policy <file> [options] -- <server-command> [args...]
+```
+
+| Flag                | Purpose                                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `--policy <path>`   | Policy file. Required unless `EG_CONTROL_PLANE_URL` is set. Malformed policy = every call denied.                             |
+| `--receipts <path>` | Append signed receipts here (default `./eg-receipts.jsonl`).                                                                  |
+| `--key <path>`      | Ed25519 seed for a stable signing key. Without it a key is generated per run and receipts are not verifiable across restarts. |
+| `--timeout <ms>`    | Policy evaluation timeout. A timeout is a deny.                                                                               |
+| `--name <name>`     | Server name recorded in receipts.                                                                                             |
+| `-h`, `--help`      | Show usage and exit 0.                                                                                                        |
+| `--`                | Everything after is the wrapped server command, verbatim.                                                                     |
+
+Exit behavior: if the wrapped server exits, the gate exits with the same
+code. If the gate cannot start (bad policy, missing binary), it exits
+nonzero and **no server starts** — fail-closed extends to process
+lifecycle.
+
+## Works with
+
+- **Claude Desktop / Claude Code** — wrap any server in
+  `claude_desktop_config.json` or `.mcp.json`
+- **Cursor, Windsurf, any MCP client** — anything that launches stdio MCP
+  servers
+- **Any MCP server** — filesystem, GitHub, databases, browsers; the gate
+  is server-agnostic
+
+## Versioning
+
+Semver, tracks `@11ai/execution-governance` minors. The receipt format is
+versioned independently; old receipt files stay verifiable.
+
+## The @11ai packages
+
+| Package                                                                                  | What it is                                       |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| [`@11ai/execution-governance`](https://www.npmjs.com/package/@11ai/execution-governance) | SDK: gate any function call, not just MCP.       |
+| [`@11ai/mcp-gate`](https://www.npmjs.com/package/@11ai/mcp-gate)                         | This package.                                    |
+| `@11ai/identity-oidc` _(coming)_                                                         | OIDC-verified principals bound to every receipt. |
+| `execution-governance` on PyPI _(coming)_                                                | Python SDK, cross-verifiable receipts.           |
+
+## Part of Execution Governance
+
+Built on
+[`@11ai/execution-governance`](https://www.npmjs.com/package/@11ai/execution-governance)
+— the SDK for gating any function call (not just MCP) with the same policy
+engine and receipt chain. Try the prompt-injection demo:
+
+```bash
+git clone https://github.com/11-11AI/execution-governance && cd execution-governance
+npm install && npm run demo
+```
 
 ## License
 
-Apache-2.0. See NOTICE.
+Apache-2.0. Fully functional locally — no account, no hosted dependency.
+See [LICENSE](https://github.com/11-11AI/execution-governance/blob/main/LICENSE).
