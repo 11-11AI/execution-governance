@@ -1,6 +1,6 @@
 {
   "name": "@11ai/execution-governance",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Pre-execution authorization for AI agent tool calls: allow or deny before execution, fail-closed, with a signed receipt for every decision.",
   "license": "Apache-2.0",
   "repository": {
