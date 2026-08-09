@@ -96,6 +96,7 @@ mcp-gate --policy <file> [options] -- <server-command> [args...]
 | `--key <path>`      | Ed25519 seed for a stable signing key. Without it a key is generated per run and receipts are not verifiable across restarts.     |
 | `--timeout <ms>`    | Policy evaluation timeout. A timeout is a deny.                                                                                   |
 | `--name <name>`     | Tool namespace prefix. Defaults to a name derived from the wrapped command. See the warning below — this affects policy matching. |
+| `--validate`        | Check the policy and exit. Starts no server, writes no receipts. Safe in CI.                                                      |
 | `-h`, `--help`      | Show usage and exit 0.                                                                                                            |
 | `--`                | Everything after is the wrapped server command, verbatim.                                                                         |
 
@@ -113,6 +114,18 @@ mcp-gate --policy <file> [options] -- <server-command> [args...]
 > prefix as a side effect — and a rule that no longer matches is a rule that no
 > longer denies. Set `--name` explicitly and the prefix stops depending on how
 > the server happens to be launched.
+
+Validate a policy before you depend on it:
+
+```bash
+npx @11ai/mcp-gate --validate --policy eg-policy.yaml
+```
+
+Exits 0 with the policy version, or 1 naming the fault. This runs the engine's
+own parser rather than a schema check, so it catches what a schema cannot: a
+rule naming an `actionClass` that was never declared, and an `argsPattern` that
+is not a compilable regex. Both produce a policy that loads as valid YAML and
+then denies every call, which looks identical to a very strict policy.
 
 Exit behavior: if the wrapped server exits, the gate exits with the same
 code. If the gate cannot start (bad policy, missing binary), it exits
