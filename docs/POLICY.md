@@ -120,3 +120,47 @@ rules:
 ## Remote engine
 
 If `EG_CONTROL_PLANE_URL` is set, the gate can use the remote engine instead. It POSTs the request there with a bearer token from `EG_API_KEY`. A timeout, a non-200, or a malformed response all resolve to deny. The server side is out of scope for this package.
+
+## Validate a policy before you ship it
+
+```bash
+npx @11ai/mcp-gate --validate --policy eg-policy.yaml
+```
+
+Exits 0 and prints the policy version, or exits 1 and names the fault. It starts
+no server and writes no receipts, so it is safe in CI.
+
+This runs the engine's own parser, which is why it is the check worth gating on.
+It catches things a schema cannot: a rule naming an `actionClass` that was never
+declared, and an `argsPattern` that is not a compilable regex. Both produce a
+policy that loads as valid-looking YAML and then denies everything, which is
+indistinguishable at a glance from a very strict policy.
+
+## JSON Schema
+
+[`schemas/eg-policy.schema.json`](../schemas/eg-policy.schema.json) describes the
+policy shape for editor completion and for CI on non-JavaScript toolchains.
+
+**It is the weaker check.** It cannot express the two rules above. Use it for
+authoring; use `--validate` for gating. A test in this repository asserts the
+schema and the engine accept the same set of keys, so the two cannot drift apart
+silently.
+
+### A YAML trap worth knowing
+
+Write `argsPattern` values in **single quotes**. YAML processes escape sequences
+inside double quotes but not inside single quotes, so `"\.env"` and `'\.env'` are
+different patterns. A formatter that requotes your file can therefore change what
+a rule matches without changing anything you would notice in review.
+
+## Starter policies
+
+| Policy                                                                            | For                                                                          |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`tests/fixtures/starter-policy.yaml`](../tests/fixtures/starter-policy.yaml)     | general: exfiltration, irreversible actions, spend, identity change          |
+| [`examples/policies/browser-agent.yaml`](../examples/policies/browser-agent.yaml) | an agent driving a browser, where injected page text is the normal condition |
+| [`examples/policies/finance-agent.yaml`](../examples/policies/finance-agent.yaml) | an agent with access to money movement                                       |
+| [`examples/git-hook/eg-policy.yaml`](../examples/git-hook/eg-policy.yaml)         | a coding agent with push access                                              |
+
+Each is deny-by-default, and each is covered by tests asserting it denies what
+its comments claim rather than merely parsing.
