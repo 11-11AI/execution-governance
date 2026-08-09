@@ -18,6 +18,47 @@ bumps the major.
 
 Nothing yet.
 
+## [0.2.0] - 2026-08-09
+
+### BREAKING
+
+- **`RemotePolicyEngine` now DENIES any decision that does not carry an Ed25519
+  signature verifying against the engine's published JWKS.** Before 0.2.0 an
+  unsigned decision was accepted. An unreachable or non-200 JWKS also denies.
+
+  _Migration:_ publish a JWKS and sign your decisions, or set
+  `requireSignature: false` (env: `EG_REQUIRE_SIGNATURE=false`, spelled out in
+  full) and understand that you are choosing to accept an allow from anything
+  that can answer the URL.
+
+  This is a major-version change rather than a patch because it changes
+  behaviour on an authorization path: a deployment that was allowing will start
+  denying, with no code change. It is on by default because the people most
+  exposed by an unsigned remote engine are exactly the ones who never change a
+  default.
+
+### Added
+
+- **JWKS verification primitives**, exported for anyone implementing the same
+  check elsewhere: `verifySignedDecision`, `defaultJwksUrl`, and the
+  `SignedDecisionEnvelope` type.
+- `RemotePolicyEngineOptions` gains `jwksUrl` (defaults to the control-plane
+  origin + `/.well-known/jwks.json`) and `requireSignature` (defaults to
+  `true`). `EG_JWKS_URL` and `EG_REQUIRE_SIGNATURE` are read by `fromEnv`.
+
+### Notes for implementers
+
+The control plane signs `JSON.stringify(obj)` where `obj` is rebuilt by walking
+`signed_fields` **in order** — insertion order, not sorted. This is deliberately
+**not** the JCS canonicalisation this package uses for receipts. A verifier that
+reaches for JCS will produce a different byte string and every signature will
+fail, with nothing in the error to explain why.
+
+A named `kid` must be present in the JWKS. There is no fallback to another key,
+because falling back would defeat revocation and rotation: a decision signed by
+a retired key would still verify against a current one. Only an envelope
+carrying no `kid` at all falls back to the first key.
+
 ## [0.1.2] - 2026-08-09
 
 Additive throughout. **No public API changed**: `packages/gate/src` is
@@ -147,7 +188,8 @@ counts are unchanged, and the published npm tarballs were not touched — their
 shasums still match what was published. Older references to hashes such as
 `01c5e00` will not resolve; `d957635` is the same commit.
 
-[Unreleased]: https://github.com/11-11AI/execution-governance/compare/v0.1.2...main
+[Unreleased]: https://github.com/11-11AI/execution-governance/compare/v0.2.0...main
+[0.2.0]: https://github.com/11-11AI/execution-governance/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/11-11AI/execution-governance/compare/d957635...v0.1.2
 [0.1.1]: https://github.com/11-11AI/execution-governance/compare/v0.1.0...d957635
 [0.1.0]: https://github.com/11-11AI/execution-governance/releases/tag/v0.1.0
