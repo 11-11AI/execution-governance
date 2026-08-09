@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/11-11AI/execution-governance/main/schemas/eg-policy.schema.json",
+  "title": "Execution Governance policy",
+  "description": "Schema for eg-policy.yaml. This describes the shape a policy must have. It is NOT the whole contract: the engine additionally rejects a rule referencing an undeclared actionClass, and an argsPattern that is not a compilable regex. Neither is expressible here. `mcp-gate --validate` runs the engine's own parser and is therefore strictly stronger than validating against this file. Use this schema for editor completion and for CI on non-JavaScript toolchains; use --validate as the gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Recorded on every receipt as policyVersion. Omitted, the engine records \"unversioned\", which makes a receipt unable to say which policy produced it.",
+      "minLength": 1
+    },
+    "actionClasses": {
+      "type": "object",
+      "description": "Named categories of risky behaviour, so rules read as intent rather than as globs.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tools": {
+            "type": "array",
+            "description": "Tool-name globs, matched case-insensitively. * matches within one dot-separated segment, ** matches across segments.",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "argsPattern": {
+            "type": "string",
+            "description": "Case-insensitive regex matched against JSON.stringify(args). Quote it in YAML so backslashes stay literal.",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "description": "Evaluated in order; the first match wins. A request matching no rule is DENIED. Order is therefore load-bearing: an allow placed above a deny will swallow it.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["effect"],
+        "anyOf": [
+          { "required": ["class"] },
+          { "required": ["tool"] },
+          { "required": ["argsPattern"] }
+        ],
+        "properties": {
+          "effect": {
+            "enum": ["allow", "deny"],
+            "description": "The decision when this rule matches."
+          },
+          "class": {
+            "type": "string",
+            "description": "Name of an entry in actionClasses. The engine rejects a name that is not declared there; this schema cannot check that.",
+            "minLength": 1
+          },
+          "tool": {
+            "type": "string",
+            "description": "Tool-name glob.",
+            "minLength": 1
+          },
+          "argsPattern": {
+            "type": "string",
+            "description": "Additional case-insensitive regex filter over JSON.stringify(args).",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "description": "Recorded verbatim on the receipt. This is what a person reads when a call is denied, so write it for them."
+          }
+        }
+      }
+    }
+  }
+}
