@@ -6,3 +6,6 @@ eg-receipts.jsonl
 .DS_Store
 *.key
 *.pem
+test-results/
+playwright-report/
+blob-report/
