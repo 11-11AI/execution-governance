@@ -1,0 +1,20 @@
+# Minimal policy for the cold-start smoke test. Deny by default: anything that
+# matches no allow rule is denied. This is deliberately small — the point of the
+# cold-start job is to prove the published packages work on a bare machine, not
+# to exercise policy coverage. The starter policy is in examples/quickstart.
+version: "coldstart-1"
+
+actionClasses:
+  exfiltration:
+    # mcp-gate namespaces every call as <server-name>.<tool>, so the fixture's
+    # http_post arrives as `echo-server.http_post`.
+    tools: ["*.http_post"]
+    argsPattern: '(secret|api[_-]?key|password|token|credential|\.env)'
+
+rules:
+  - class: exfiltration
+    effect: deny
+    reason: "exfiltration: outbound call carrying secret material"
+  - tool: "echo-server.read_file"
+    effect: allow
+    reason: "reads are allowed"

@@ -1,0 +1,147 @@
+# Cold-start smoke test: does the published product work on a machine that has
+# never seen it?
+#
+# ci.yml tests the workspace: built from source, linked locally, with whatever
+# npm already had cached. That is the one configuration no user is ever in. This
+# job installs from the registry into an empty directory outside the workspace,
+# with an empty npm cache, and runs the documented path end to end. It is the
+# only check here that can fail because of a bad `files` list, a missing
+# dependency, a broken `bin` shim, or a README that no longer matches the code
+# it documents.
+name: coldstart
+
+on:
+  push:
+  schedule:
+    # Daily. A published tarball can start failing without anyone pushing:
+    # a transitive dependency is unpublished, a registry change, a new npx.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coldstart:
+    runs-on: ubuntu-latest
+    strategy:
+      # Both versions matter, and one failing should not hide the other. 24 is
+      # the runtime release.yml publishes from. 18 is the floor `engines` claims
+      # on both published packages, and a support claim nothing runs is a guess.
+      fail-fast: false
+      matrix:
+        node: [18, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choose a project directory and a private npm cache
+        run: |
+          set -euo pipefail
+          # Everything happens under $RUNNER_TEMP, outside $GITHUB_WORKSPACE.
+          # Inside the checkout, the root package.json declares workspaces, and
+          # `npm install @11ai/execution-governance` would symlink packages/gate
+          # instead of fetching the published package -- which is exactly the
+          # failure this job exists to catch, so it must not be able to happen
+          # by accident. npm_config_cache is a private, empty cache that both
+          # npm and npx read, so neither can be satisfied by an artifact a
+          # previous job left behind.
+          #
+          # Set here rather than in a job-level `env:` block because the
+          # `runner` context is not available to one.
+          echo "PROJECT=$RUNNER_TEMP/coldstart-project" >> "$GITHUB_ENV"
+          echo "npm_config_cache=$RUNNER_TEMP/npm-cache-cold" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          # Deliberately no `cache:` key: a warm cache would defeat the job.
+          node-version: ${{ matrix.node }}
+
+      - name: Empty the npm cache
+        run: |
+          set -euo pipefail
+          rm -rf "$npm_config_cache"
+          mkdir -p "$npm_config_cache"
+          echo "npm cache: $(npm config get cache)"
+
+      - name: Create an empty project outside the workspace
+        run: |
+          set -euo pipefail
+          rm -rf "$PROJECT"
+          mkdir -p "$PROJECT"
+          cp -R "$GITHUB_WORKSPACE/.github/coldstart/." "$PROJECT/"
+          cd "$PROJECT"
+          npm init -y > /dev/null
+          npm pkg set type=module
+          ls -R .
+
+      - name: Install @11ai/execution-governance from the registry
+        working-directory: ${{ env.PROJECT }}
+        run: |
+          set -euo pipefail
+          npm install @11ai/execution-governance
+          pkg=node_modules/@11ai/execution-governance
+          # Prove it came from the registry. A workspace link would be a symlink
+          # pointing back into the checkout, and every assertion after this point
+          # would be testing source that was never published.
+          if [ -L "$pkg" ]; then
+            echo "FAIL: $pkg is a symlink -> $(readlink "$pkg")"
+            exit 1
+          fi
+          case "$(realpath "$pkg")" in
+            "$GITHUB_WORKSPACE"/*) echo "FAIL: resolved into the checkout"; exit 1 ;;
+          esac
+          echo "installed version: $(node -p "require('./$pkg/package.json').version")"
+          # The bin shim is part of the published artifact and is what step 4 runs.
+          test -x node_modules/.bin/eg-verify || { echo "FAIL: eg-verify shim missing"; exit 1; }
+
+      - name: Run the README quickstart against the published package
+        working-directory: ${{ env.PROJECT }}
+        run: |
+          set -euo pipefail
+          # The README tells a first-time user to curl these two files from main.
+          # The job copies them out of the checkout instead, so a pull request
+          # tests the quickstart it is proposing rather than the one already
+          # published. The command below is the README's, unchanged.
+          cp "$GITHUB_WORKSPACE/examples/quickstart/quickstart.mjs" .
+          cp "$GITHUB_WORKSPACE/examples/quickstart/eg-policy.yaml" .
+          out=$(node quickstart.mjs --key ./eg-signing.key --receipts ./eg-receipts.jsonl)
+          echo "$out"
+          echo "$out" | grep -q "denied: exfiltration: outbound call carrying secret material"
+          test -s eg-receipts.jsonl
+          # Keep the last line, which is the verify command the quickstart tells
+          # the user to run. The next step runs exactly that: if what it prints
+          # is not copy-pasteable, that is the bug, and reconstructing the
+          # command here would hide it.
+          printf '%s\n' "$out" | tail -1 | sed 's/^[[:space:]]*//' > verify-cmd
+
+      - name: Verify the quickstart receipts with the command it printed
+        working-directory: ${{ env.PROJECT }}
+        run: |
+          set -euo pipefail
+          cmd=$(cat verify-cmd)
+          echo "> $cmd"
+          case "$cmd" in
+            "npx eg-verify --receipts ./eg-receipts.jsonl --pubkey "?*) ;;
+            *) echo "FAIL: the quickstart printed no runnable verify command"; exit 1 ;;
+          esac
+          report=$(sh -c "$cmd")
+          echo "$report"
+          # eg-verify exits 0 on a verified chain, but assert on the reported
+          # result too: an exit code alone cannot distinguish "verified" from a
+          # future change that stops treating a break as a failure.
+          echo "$report" | grep -q "RESULT: VERIFIED"
+
+      - name: Gate an MCP server with the published mcp-gate
+        working-directory: ${{ env.PROJECT }}
+        run: node drive-proxy.mjs
+
+      - name: Verify the mcp-gate receipts with eg-verify
+        working-directory: ${{ env.PROJECT }}
+        run: |
+          set -euo pipefail
+          report=$(./node_modules/.bin/eg-verify \
+            --receipts mcp-receipts.jsonl \
+            --pubkey "$(cat mcp-pubkey.txt)")
+          echo "$report"
+          echo "$report" | grep -q "receipts: 2, allows: 1, denies: 1"
+          echo "$report" | grep -q "RESULT: VERIFIED"
