@@ -17,7 +17,14 @@ import { LocalPolicyEngine } from "@11ai/execution-governance";
 const VECTORS_PATH = "tests/vectors/injections.jsonl";
 const POLICY_PATH = "tests/fixtures/starter-policy.yaml";
 const OUT_PATH = "docs/VECTORS.md";
+const README_PATH = "README.md";
 const GENERATOR = "scripts/gen-vectors-doc.ts";
+
+// The README's headline count used to be a number someone typed. Nothing checked
+// it, so it could only ever become wrong. It is now generated between these
+// markers and covered by the same CI staleness check as the page itself.
+const BEGIN = "<!-- vectors:begin";
+const END = "<!-- vectors:end -->";
 
 interface Vector {
   tool: string;
@@ -30,6 +37,33 @@ interface Row extends Vector {
   id: string;
   decision: string;
   reason: string;
+}
+
+/** Rewrite the generated block in the README, leaving the rest of the file alone. */
+function updateReadme(denied: number, total: number, policyVersion: string): void {
+  const readme = read(README_PATH);
+  const start = readme.indexOf(BEGIN);
+  const endMarker = readme.indexOf(END);
+  if (start < 0 || endMarker < 0 || endMarker < start) {
+    throw new Error(
+      `${README_PATH} has no \`${BEGIN} ... ${END}\` block. ` +
+        `Restore the markers, or this count goes back to being unchecked.`,
+    );
+  }
+  const openLineEnd = readme.indexOf("\n", start);
+  const block = [
+    readme.slice(start, openLineEnd + 1),
+    "",
+    `- ${denied} of ${total} adversarial vectors denied under the starter policy \`${policyVersion}\`,`,
+    "  reproducible in CI. Every vector, and the reason the engine returned for it, is",
+    `  in [\`${OUT_PATH}\`](${OUT_PATH}).`,
+    "",
+    END,
+  ].join("\n");
+  writeFileSync(
+    resolve(process.cwd(), README_PATH),
+    readme.slice(0, start) + block + readme.slice(endMarker + END.length),
+  );
 }
 
 function read(path: string): string {
@@ -140,7 +174,11 @@ async function main(): Promise<void> {
   }
 
   writeFileSync(resolve(process.cwd(), OUT_PATH), out.join("\n"));
-  console.log(`${OUT_PATH}: ${total} vectors, ${denied} denied, policy ${policyVersion}`);
+  updateReadme(denied, total, policyVersion);
+  console.log(
+    `${OUT_PATH} and the ${README_PATH} count: ` +
+      `${total} vectors, ${denied} denied, policy ${policyVersion}`,
+  );
 }
 
 main().catch((e: unknown) => {

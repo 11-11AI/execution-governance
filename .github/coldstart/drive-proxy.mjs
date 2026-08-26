@@ -37,7 +37,7 @@ const proxy = spawn(
     "-y",
     "@11ai/mcp-gate",
     "--policy",
-    "eg-policy.yaml",
+    "mcp-policy.yaml",
     "--key",
     "mcp-key.b64",
     "--receipts",

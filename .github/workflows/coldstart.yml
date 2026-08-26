@@ -24,6 +24,13 @@ permissions:
 jobs:
   coldstart:
     runs-on: ubuntu-latest
+    strategy:
+      # Both versions matter, and one failing should not hide the other. 24 is
+      # the runtime release.yml publishes from. 18 is the floor `engines` claims
+      # on both published packages, and a support claim nothing runs is a guess.
+      fail-fast: false
+      matrix:
+        node: [18, 24]
     env:
       # Everything happens here, outside $GITHUB_WORKSPACE. Inside the checkout,
       # the root package.json declares workspaces, and `npm install
@@ -39,9 +46,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Matches the runtime release.yml publishes from. Deliberately no
-          # `cache:` key: a warm cache would defeat the point of the job.
-          node-version: "24"
+          # Deliberately no `cache:` key: a warm cache would defeat the job.
+          node-version: ${{ matrix.node }}
 
       - name: Empty the npm cache
         run: |
@@ -83,15 +89,35 @@ jobs:
 
       - name: Run the README quickstart against the published package
         working-directory: ${{ env.PROJECT }}
-        run: node quickstart.mjs
+        run: |
+          set -euo pipefail
+          # The README tells a first-time user to curl these two files from main.
+          # The job copies them out of the checkout instead, so a pull request
+          # tests the quickstart it is proposing rather than the one already
+          # published. The command below is the README's, unchanged.
+          cp "$GITHUB_WORKSPACE/examples/quickstart/quickstart.mjs" .
+          cp "$GITHUB_WORKSPACE/examples/quickstart/eg-policy.yaml" .
+          out=$(node quickstart.mjs --key ./eg-signing.key --receipts ./eg-receipts.jsonl)
+          echo "$out"
+          echo "$out" | grep -q "denied: exfiltration: outbound call carrying secret material"
+          test -s eg-receipts.jsonl
+          # Keep the last line, which is the verify command the quickstart tells
+          # the user to run. The next step runs exactly that: if what it prints
+          # is not copy-pasteable, that is the bug, and reconstructing the
+          # command here would hide it.
+          printf '%s\n' "$out" | tail -1 | sed 's/^[[:space:]]*//' > verify-cmd
 
-      - name: Verify the quickstart receipts with eg-verify
+      - name: Verify the quickstart receipts with the command it printed
         working-directory: ${{ env.PROJECT }}
         run: |
           set -euo pipefail
-          report=$(./node_modules/.bin/eg-verify \
-            --receipts eg-receipts.jsonl \
-            --pubkey "$(cat quickstart-pubkey.txt)")
+          cmd=$(cat verify-cmd)
+          echo "> $cmd"
+          case "$cmd" in
+            "npx eg-verify --receipts ./eg-receipts.jsonl --pubkey "?*) ;;
+            *) echo "FAIL: the quickstart printed no runnable verify command"; exit 1 ;;
+          esac
+          report=$(sh -c "$cmd")
           echo "$report"
           # eg-verify exits 0 on a verified chain, but assert on the reported
           # result too: an exit code alone cannot distinguish "verified" from a

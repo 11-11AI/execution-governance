@@ -39,11 +39,12 @@ jobs:
       - run: bash scripts/verify-tarball.sh
 
   docs:
-    # docs/VECTORS.md is generated from the red-team fixture and the starter
-    # policy. This job regenerates it and fails on a diff, so the page cannot
-    # drift from the vectors it reports: a new vector, a renamed tool, or an
-    # edited reason string that is not reflected in the page stops the merge
-    # rather than quietly publishing a number that is no longer true.
+    # docs/VECTORS.md, and the count in the README, are both generated from the
+    # red-team fixture and the starter policy. This job regenerates them and
+    # fails on a diff, so neither can drift from the vectors it reports: a new
+    # vector, a renamed tool, or an edited reason string that is not reflected
+    # stops the merge rather than quietly publishing a number that is no longer
+    # true. The README count is the one that used to be typed by hand.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,11 +53,11 @@ jobs:
           node-version: "24"
       - run: npm ci
       - run: npm run gen:vectors
-      - name: docs/VECTORS.md is up to date
+      - name: The generated vector docs are up to date
         run: |
-          if ! git diff --quiet -- docs/VECTORS.md; then
-            echo "docs/VECTORS.md is stale. Regenerate it with: npm run gen:vectors"
-            git --no-pager diff -- docs/VECTORS.md
+          if ! git diff --quiet -- docs/VECTORS.md README.md; then
+            echo "Generated vector docs are stale. Regenerate with: npm run gen:vectors"
+            git --no-pager diff -- docs/VECTORS.md README.md
             exit 1
           fi
-          echo "docs/VECTORS.md matches the fixtures"
+          echo "docs/VECTORS.md and the README count match the fixtures"

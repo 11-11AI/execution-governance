@@ -6,10 +6,9 @@ version: "coldstart-1"
 
 actionClasses:
   exfiltration:
-    # `http.post` is what the README quickstart calls. `*.http_post` is the same
-    # tool as it appears through mcp-gate, which namespaces every call as
-    # <server-name>.<tool>, so here as `echo-server.http_post`.
-    tools: ["http.post", "*.http_post"]
+    # mcp-gate namespaces every call as <server-name>.<tool>, so the fixture's
+    # http_post arrives as `echo-server.http_post`.
+    tools: ["*.http_post"]
     argsPattern: '(secret|api[_-]?key|password|token|credential|\.env)'
 
 rules:

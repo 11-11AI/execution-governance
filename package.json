@@ -20,7 +20,7 @@
     "lint": "eslint . && prettier --check \"**/*.{ts,js,mjs,json,md,yaml,yml}\"",
     "format": "prettier --write \"**/*.{ts,js,mjs,json,md,yaml,yml}\"",
     "demo": "npm run build && node examples/injection-demo/demo.mjs",
-    "gen:vectors": "npm run build && tsc -p scripts/tsconfig.json && node node_modules/.cache/eg-scripts/gen-vectors-doc.js && prettier --log-level warn --write docs/VECTORS.md"
+    "gen:vectors": "npm run build && tsc -p scripts/tsconfig.json && node node_modules/.cache/eg-scripts/gen-vectors-doc.js && prettier --log-level warn --write docs/VECTORS.md README.md"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
