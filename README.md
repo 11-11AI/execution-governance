@@ -3,6 +3,8 @@
 [![CI](https://github.com/11-11AI/execution-governance/actions/workflows/ci.yml/badge.svg)](https://github.com/11-11AI/execution-governance/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
+[What each component is licensed under, and what you may do with it](LICENSING.md).
+
 Pre-execution authorization for AI agent tool calls: allow or deny before execution, fail-closed, with a signed receipt for every decision.
 
 Request → Verify → Allow or Deny → Execute → Proof.
@@ -152,4 +154,5 @@ Execution Governance enforces the policy you configure. It is one control, not a
 
 ## License
 
-Apache-2.0. See LICENSE and NOTICE.
+Apache-2.0. See LICENSE and NOTICE. See [LICENSING.md](LICENSING.md) for the
+per-component boundary between what is open and what is commercial.
