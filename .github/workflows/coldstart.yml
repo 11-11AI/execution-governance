@@ -31,18 +31,25 @@ jobs:
       fail-fast: false
       matrix:
         node: [18, 24]
-    env:
-      # Everything happens here, outside $GITHUB_WORKSPACE. Inside the checkout,
-      # the root package.json declares workspaces, and `npm install
-      # @11ai/execution-governance` would symlink packages/gate instead of
-      # fetching the published package -- which is exactly the failure this job
-      # exists to catch, so it must not be able to happen by accident.
-      PROJECT: ${{ runner.temp }}/coldstart-project
-      # A private, empty cache. Both npm and npx read this, so neither can be
-      # satisfied by an artifact a previous job left behind.
-      npm_config_cache: ${{ runner.temp }}/npm-cache-cold
     steps:
       - uses: actions/checkout@v4
+
+      - name: Choose a project directory and a private npm cache
+        run: |
+          set -euo pipefail
+          # Everything happens under $RUNNER_TEMP, outside $GITHUB_WORKSPACE.
+          # Inside the checkout, the root package.json declares workspaces, and
+          # `npm install @11ai/execution-governance` would symlink packages/gate
+          # instead of fetching the published package -- which is exactly the
+          # failure this job exists to catch, so it must not be able to happen
+          # by accident. npm_config_cache is a private, empty cache that both
+          # npm and npx read, so neither can be satisfied by an artifact a
+          # previous job left behind.
+          #
+          # Set here rather than in a job-level `env:` block because the
+          # `runner` context is not available to one.
+          echo "PROJECT=$RUNNER_TEMP/coldstart-project" >> "$GITHUB_ENV"
+          echo "npm_config_cache=$RUNNER_TEMP/npm-cache-cold" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
