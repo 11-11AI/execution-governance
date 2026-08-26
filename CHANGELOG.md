@@ -18,6 +18,48 @@ bumps the major.
 
 Nothing yet.
 
+## [0.2.1] - 2026-08-25
+
+**No runtime code changed.** `packages/gate/src` and `packages/mcp-gate/src` are
+byte-identical to 0.2.0. This release exists to ship corrected documentation to
+npm, where the wrong version of it was being read, and to add release-safety
+checks that did not exist before.
+
+### Fixed
+
+- **The documented verify path now verifies.** The quickstart told you to run
+  `eg-verify --receipts eg-receipts.jsonl --pubkey <printed public key>`, but
+  nothing ever printed a public key and the gate's signing key was ephemeral, so
+  the documented path dead-ended at the one step the product is about. The
+  quickstart now takes `--key <path>` and `--receipts <path>` — the same flags
+  and the same key-file format `mcp-gate` takes — creates the seed on first run,
+  and prints the exact `eg-verify` command for the chain it just wrote. Fixed in
+  the package README as well as the repository README, since the package README
+  is what the npm page shows.
+
+### Added
+
+- `LICENSING.md`: one row per shipped component, and why everything needed to
+  verify a receipt is Apache-2.0 permanently. Linked from both package READMEs.
+- `docs/VECTORS.md`: every adversarial vector with the decision and reason the
+  engine actually returned, generated from the fixtures by `npm run gen:vectors`.
+  The count in the README is generated from the same data. CI fails on drift, so
+  neither can go stale.
+- A **cold-start CI job** that installs the published packages from the registry
+  into an empty directory with an empty npm cache, on Node 18 and 24, runs the
+  documented quickstart, gates a stdio MCP server through `npx @11ai/mcp-gate`,
+  and verifies both receipt chains. It is the only check that exercises the
+  artifact a user actually receives rather than the workspace.
+
+### Notes for implementers
+
+A custom `receiptSink` starts its chain at genesis. The gate continues an
+existing chain only for its own default sink at `./eg-receipts.jsonl`, so
+pointing a custom sink at a file that already has receipts in it produces a
+chain break rather than a longer chain, and `eg-verify` will report `FAILED` on
+a file that looks fine. The shipped quickstart now detects this and stops rather
+than write a file that cannot verify. Unchanged behaviour, newly documented.
+
 ## [0.2.0] - 2026-08-09
 
 ### BREAKING
@@ -209,7 +251,8 @@ counts are unchanged, and the published npm tarballs were not touched — their
 shasums still match what was published. Older references to hashes such as
 `01c5e00` will not resolve; `d957635` is the same commit.
 
-[Unreleased]: https://github.com/11-11AI/execution-governance/compare/v0.2.0...main
+[Unreleased]: https://github.com/11-11AI/execution-governance/compare/v0.2.1...main
+[0.2.1]: https://github.com/11-11AI/execution-governance/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/11-11AI/execution-governance/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/11-11AI/execution-governance/compare/d957635...v0.1.2
 [0.1.1]: https://github.com/11-11AI/execution-governance/compare/v0.1.0...d957635

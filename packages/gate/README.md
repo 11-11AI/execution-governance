@@ -26,21 +26,47 @@ No API key. No network. No telemetry. Runs entirely on your machine.
 
 ```bash
 npm install @11ai/execution-governance
+curl -sLO https://raw.githubusercontent.com/11-11AI/execution-governance/main/examples/quickstart/quickstart.mjs
+curl -sLO https://raw.githubusercontent.com/11-11AI/execution-governance/main/examples/quickstart/eg-policy.yaml
+node quickstart.mjs --key ./eg-signing.key --receipts ./eg-receipts.jsonl
 ```
+
+With the starter policy, a secret-bearing outbound POST is **denied before
+`fetch` ever runs**, a signed receipt is appended, and the run prints the exact
+command that checks it:
+
+```
+created signing key ./eg-signing.key (private: keep it out of version control)
+denied: exfiltration: outbound call carrying secret material
+receipt: 01a03bd6-f736-785b-a82d-62363da0273e
+
+verify it yourself:
+  npx eg-verify --receipts ./eg-receipts.jsonl --pubkey huCJiiZMYF0Ye7R6099agDYtV8TLOhmqCnv8LewTb7A
+```
+
+Run that command and you get `RESULT: VERIFIED`. The public key is yours, so it
+will not be the one above.
+
+`--key` is the part that matters. Without a stable signing key the SDK generates
+one per run, warns, and throws it away: the receipts still look fine and can
+never be verified again, including by you a minute later.
+
+That is the whole API:
 
 ```ts
 import { createGate } from "@11ai/execution-governance";
 
-const gate = createGate({ policy: "./eg-policy.yaml" });
+const gate = createGate({ policy: "./eg-policy.yaml", signingKey });
 
 const result = await gate.govern({ sessionId: "s1", tool: "http.post", args: { url, body } }, () =>
   fetch(url, { method: "POST", body }),
 );
 ```
 
-With the starter policy, a secret-bearing outbound POST is **denied before
-`fetch` ever runs**, and a signed receipt is appended to
-`./eg-receipts.jsonl`.
+`govern` runs the callback only on allow, and throws `DeniedError` on deny.
+`signingKey` is a 32-byte Ed25519 seed;
+[`examples/quickstart`](https://github.com/11-11AI/execution-governance/tree/main/examples/quickstart)
+is the file the commands above download, and shows how it is created and reused.
 
 ## Try the attack demo (no keys, no network)
 
@@ -104,7 +130,9 @@ produced it:
 eg-verify --receipts eg-receipts.jsonl --pubkey <base64url public key>
 ```
 
-`--pubkey` may also come from the `EG_PUBLIC_KEY` environment variable.
+`--pubkey` may also come from the `EG_PUBLIC_KEY` environment variable. The
+public key is `gate.publicKey()` for the gate that signed the file; the
+quickstart above prints the whole command with the key already filled in.
 
 ## Gate any MCP server with one line
 
@@ -230,4 +258,7 @@ without it.
 
 Apache-2.0. See [LICENSE](https://github.com/11-11AI/execution-governance/blob/main/LICENSE)
 and [NOTICE](https://github.com/11-11AI/execution-governance/blob/main/NOTICE).
+[LICENSING.md](https://github.com/11-11AI/execution-governance/blob/main/LICENSING.md)
+sets out, per component, what is open permanently and what is commercial: every
+part needed to verify a receipt is Apache-2.0 and stays that way.
 Provided as-is; you are responsible for your policy, deployment, and keys.

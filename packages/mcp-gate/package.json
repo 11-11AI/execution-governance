@@ -1,6 +1,6 @@
 {
   "name": "@11ai/mcp-gate",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Fail-closed MCP proxy that gates agent tool calls with Execution Governance.",
   "license": "Apache-2.0",
   "repository": {
@@ -44,6 +44,6 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@11ai/execution-governance": "^0.2.0"
+    "@11ai/execution-governance": "^0.2.1"
   }
 }
