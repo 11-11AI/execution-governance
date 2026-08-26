@@ -37,3 +37,26 @@ jobs:
           node-version: "24"
       - run: npm ci
       - run: bash scripts/verify-tarball.sh
+
+  docs:
+    # docs/VECTORS.md is generated from the red-team fixture and the starter
+    # policy. This job regenerates it and fails on a diff, so the page cannot
+    # drift from the vectors it reports: a new vector, a renamed tool, or an
+    # edited reason string that is not reflected in the page stops the merge
+    # rather than quietly publishing a number that is no longer true.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run gen:vectors
+      - name: docs/VECTORS.md is up to date
+        run: |
+          if ! git diff --quiet -- docs/VECTORS.md; then
+            echo "docs/VECTORS.md is stale. Regenerate it with: npm run gen:vectors"
+            git --no-pager diff -- docs/VECTORS.md
+            exit 1
+          fi
+          echo "docs/VECTORS.md matches the fixtures"

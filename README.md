@@ -114,11 +114,15 @@ Any error, timeout, unreachable engine, malformed policy, or missing decision re
 
 - Conformance properties checked in CI: absorption, monotone evidence growth, non-commutativity.
 - 26 of 26 adversarial vectors denied under the starter policy, reproducible in CI.
+  The full set, with the reason the engine returned for each one, is in
+  [`docs/VECTORS.md`](docs/VECTORS.md), generated from the fixtures by
+  `npm run gen:vectors` and checked for staleness in CI.
 
 ## Docs
 
 - `docs/RECEIPTS.md`: the exact receipt format and verification.
 - `docs/POLICY.md`: the policy schema and the canonical starter policy.
+- `docs/VECTORS.md`: every adversarial vector and the decision it gets. Generated.
 - `RELEASING.md`: how to publish.
 
 ## The rest of the project

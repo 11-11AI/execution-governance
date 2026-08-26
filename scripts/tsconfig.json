@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // Out of tree and inside node_modules, which eslint, prettier and git all
+    // already ignore. The generator is a build tool, not a shipped artifact.
+    "outDir": "../node_modules/.cache/eg-scripts",
+    "rootDir": ".",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["*.ts"]
+}
