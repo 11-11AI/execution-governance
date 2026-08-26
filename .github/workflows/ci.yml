@@ -61,3 +61,20 @@ jobs:
             exit 1
           fi
           echo "docs/VECTORS.md and the README count match the fixtures"
+
+  verify-page:
+    # docs/verify/index.html reimplements the verification path in a browser,
+    # against a different crypto stack, from a file:// URL. The Node suite cannot
+    # reach any of that. A browser verifier that disagrees with eg-verify is
+    # worse than no browser verifier, because it disagrees exactly where the
+    # answer matters, so one of these tests asserts agreement with the CLI on the
+    # same bytes rather than only asserting the page looks right.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

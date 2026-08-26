@@ -138,6 +138,12 @@ Each receipt is canonical JSON, sha3-512 hashed, Ed25519 signed, and chained. Ve
 eg-verify --receipts eg-receipts.jsonl --pubkey <base64url public key>
 ```
 
+Or [verify a receipt in your browser](docs/verify/index.html): one self-contained
+HTML file that recomputes every hash, checks every signature and walks the chain
+locally. Save it and it works with the network off. It ships a signed example and
+a tampered one, and a test asserts it returns the same verdict as `eg-verify` on
+the same bytes.
+
 ## Fail-closed
 
 Any error, timeout, unreachable engine, malformed policy, or missing decision results in deny. There is no fail-open path. A denied call in a chain absorbs: dependent calls downstream are denied without calling the engine.
@@ -159,6 +165,7 @@ Any error, timeout, unreachable engine, malformed policy, or missing decision re
 - `docs/RECEIPTS.md`: the exact receipt format and verification.
 - `docs/POLICY.md`: the policy schema and the canonical starter policy.
 - `docs/VECTORS.md`: every adversarial vector and the decision it gets. Generated.
+- `docs/verify/index.html`: the browser verifier. Offline, no build step, no server.
 - `RELEASING.md`: how to publish.
 
 ## The rest of the project
