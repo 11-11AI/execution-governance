@@ -171,3 +171,6 @@ npm install && npm run demo
 
 Apache-2.0. Fully functional locally — no account, no hosted dependency.
 See [LICENSE](https://github.com/11-11AI/execution-governance/blob/main/LICENSE).
+[LICENSING.md](https://github.com/11-11AI/execution-governance/blob/main/LICENSING.md)
+sets out, per component, what is open permanently and what is commercial: every
+part needed to verify a receipt is Apache-2.0 and stays that way.
