@@ -28,6 +28,7 @@
   "files": [
     "dist",
     "LICENSE",
+    "LICENSING.md",
     "NOTICE"
   ],
   "engines": {
