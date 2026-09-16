@@ -11,9 +11,11 @@
 // action is obvious without reading our source.
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { checkConformance, type Finding } from "../conform/index.js";
+import { checkConformance } from "../conform/index.js";
 
-const EXIT_OK = 0, EXIT_FAILED = 1, EXIT_UNREADABLE = 2;
+const EXIT_OK = 0,
+  EXIT_FAILED = 1,
+  EXIT_UNREADABLE = 2;
 
 const USAGE = `eg-conform - conformance checker for the execution-governance receipt format
 
@@ -33,7 +35,13 @@ about whether a decision was correct.
 
 No network. No telemetry.`;
 
-interface Args { file: string | null; keys: string[]; json: boolean; quiet: boolean; help: boolean }
+interface Args {
+  file: string | null;
+  keys: string[];
+  json: boolean;
+  quiet: boolean;
+  help: boolean;
+}
 
 function parseArgs(argv: string[]): Args {
   const a: Args = { file: null, keys: [], json: false, quiet: false, help: false };
@@ -56,7 +64,8 @@ function parseArgs(argv: string[]): Args {
 function loadKey(spec: string): Uint8Array {
   const raw = spec.startsWith("@") ? readFileSync(spec.slice(1), "utf8").trim() : spec;
   const b = Buffer.from(raw, "base64url");
-  if (b.length !== 32) throw new Error(`a key must be 32 bytes of base64url Ed25519 public key, got ${b.length}`);
+  if (b.length !== 32)
+    throw new Error(`a key must be 32 bytes of base64url Ed25519 public key, got ${b.length}`);
   return b;
 }
 
@@ -72,8 +81,11 @@ function report(r: ReturnType<typeof checkConformance>, file: string): void {
   const order = r.findings.map((f) => f.rule).filter((x) => !seen.has(x) && seen.add(x));
   for (const rule of order.sort()) {
     const all = r.findings.filter((f) => f.rule === rule);
-    const worst = all.some((f) => f.status === "fail") ? "fail"
-      : all.every((f) => f.status === "not_applicable") ? "not_applicable" : "pass";
+    const worst = all.some((f) => f.status === "fail")
+      ? "fail"
+      : all.every((f) => f.status === "not_applicable")
+        ? "not_applicable"
+        : "pass";
     const head = all[0]!;
     console.log(`  ${MARK[worst]}  ${rule}  ${head.title}`);
     if (worst === "not_applicable" && head.detail) console.log(`          ${head.detail}`);
@@ -81,7 +93,7 @@ function report(r: ReturnType<typeof checkConformance>, file: string): void {
     // Rules that also emit a summary finding would otherwise print a
     // line-less "line -" entry underneath their real ones.
     const detailed = all.filter((x) => x.status === "fail" && x.line !== undefined);
-    for (const f of (detailed.length > 0 ? detailed : all.filter((x) => x.status === "fail"))) {
+    for (const f of detailed.length > 0 ? detailed : all.filter((x) => x.status === "fail")) {
       if (f.line !== undefined) console.log(`          line ${f.line}`);
       if (f.expected !== undefined) console.log(`            expected  ${f.expected}`);
       if (f.actual !== undefined) console.log(`            actual    ${f.actual}`);
@@ -96,15 +108,31 @@ function report(r: ReturnType<typeof checkConformance>, file: string): void {
 
 function main(): number {
   let args: Args;
-  try { args = parseArgs(process.argv.slice(2)); }
-  catch (e) { console.error(`  ${(e as Error).message}\n`); console.error(USAGE); return EXIT_UNREADABLE; }
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (e) {
+    console.error(`  ${(e as Error).message}\n`);
+    console.error(USAGE);
+    return EXIT_UNREADABLE;
+  }
 
-  if (args.help) { console.log(USAGE); return EXIT_OK; }
-  if (!args.file) { console.error("  no receipt file given\n"); console.error(USAGE); return EXIT_UNREADABLE; }
+  if (args.help) {
+    console.log(USAGE);
+    return EXIT_OK;
+  }
+  if (!args.file) {
+    console.error("  no receipt file given\n");
+    console.error(USAGE);
+    return EXIT_UNREADABLE;
+  }
 
   let content: string;
-  try { content = readFileSync(args.file, "utf8"); }
-  catch (e) { console.error(`  cannot read ${args.file}: ${(e as Error).message}`); return EXIT_UNREADABLE; }
+  try {
+    content = readFileSync(args.file, "utf8");
+  } catch (e) {
+    console.error(`  cannot read ${args.file}: ${(e as Error).message}`);
+    return EXIT_UNREADABLE;
+  }
 
   const keys = new Map<string, Uint8Array>();
   try {
@@ -112,10 +140,19 @@ function main(): number {
       const k = loadKey(s);
       keys.set(createHash("sha3-512").update(k).digest("hex").slice(0, 16), k);
     }
-  } catch (e) { console.error(`  ${(e as Error).message}`); return EXIT_UNREADABLE; }
+  } catch (e) {
+    console.error(`  ${(e as Error).message}`);
+    return EXIT_UNREADABLE;
+  }
 
-  const lines = content.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
-  if (lines.length === 0) { console.error(`  ${args.file} contains no receipts`); return EXIT_UNREADABLE; }
+  const lines = content
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  if (lines.length === 0) {
+    console.error(`  ${args.file} contains no receipts`);
+    return EXIT_UNREADABLE;
+  }
 
   const r = checkConformance(lines, keys);
   if (args.json) console.log(JSON.stringify(r, null, 2));

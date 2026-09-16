@@ -25,30 +25,30 @@ actually contains.
 
 ## This is not eg-verify
 
-`eg-verify` answers *is this evidence sound* — one verdict, exit 0 or 1. Its
+`eg-verify` answers _is this evidence sound_ — one verdict, exit 0 or 1. Its
 terseness is a feature: it is a trust tool whose exit code is a published
 contract.
 
-This answers *which rules did my implementation get right*. The reader is an
+This answers _which rules did my implementation get right_. The reader is an
 implementer with a bug, not an auditor with a question. Bending either tool into
 the other makes the trust tool verbose and the debugging tool vague.
 
 ## The rules
 
-| | |
-| --- | --- |
-| R01 | each line is a JSON object |
-| R02 | all required fields present |
-| R03 | every field is a string |
-| R04 | `receiptId` is a uuid v7 |
-| R05 | `ts` is ISO 8601 UTC |
-| R06 | `argsHash` is sha3-512 hex |
-| R07 | `decision` is `allow` or `deny` |
-| R08 | `kid` is 16 hex chars |
-| R09 | `kid` is the sha3-512 fingerprint of the public key |
-| R10 | the receipt has a canonical form |
-| R11 | `sig` is Ed25519 over sha3-512 of the canonical receipt without `sig` |
-| R12 | the first receipt chains to the literal string `genesis` |
+|     |                                                                                      |
+| --- | ------------------------------------------------------------------------------------ |
+| R01 | each line is a JSON object                                                           |
+| R02 | all required fields present                                                          |
+| R03 | every field is a string                                                              |
+| R04 | `receiptId` is a uuid v7                                                             |
+| R05 | `ts` is ISO 8601 UTC                                                                 |
+| R06 | `argsHash` is sha3-512 hex                                                           |
+| R07 | `decision` is `allow` or `deny`                                                      |
+| R08 | `kid` is 16 hex chars                                                                |
+| R09 | `kid` is the sha3-512 fingerprint of the public key                                  |
+| R10 | the receipt has a canonical form                                                     |
+| R11 | `sig` is Ed25519 over sha3-512 of the canonical receipt without `sig`                |
+| R12 | the first receipt chains to the literal string `genesis`                             |
 | R13 | `prevReceiptHash` is sha3-512 of the canonical previous receipt, including its `sig` |
 
 Every rule is checkable from `docs/RECEIPTS.md` alone. Nothing here needs
@@ -69,18 +69,18 @@ document, and that is a finding rather than a merge conflict.
 
 ## Exit codes
 
-| code | meaning |
-| ---- | ------- |
-| 0 | every rule passed |
-| 1 | a rule failed |
-| 2 | unreadable: missing file, bad key, bad arguments |
+| code | meaning                                          |
+| ---- | ------------------------------------------------ |
+| 0    | every rule passed                                |
+| 1    | a rule failed                                    |
+| 2    | unreadable: missing file, bad key, bad arguments |
 
 A `deny` in the file is not a failure. This checks the **format**, not the
 decisions, and makes no claim about whether a decision was correct.
 
 ## What it does not check
 
-Policy evaluation. Whether a decision was *right* is a question about the
+Policy evaluation. Whether a decision was _right_ is a question about the
 policy, not the receipt. It also makes no claim about the control plane's
 evidence root.
 

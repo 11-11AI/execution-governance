@@ -18,14 +18,29 @@ bumps the major.
 
 Nothing yet.
 
+## [0.4.1]
+
+### Fixed
+
+- **`0.4.0` declared a dependency on itself** (`@11ai/execution-governance:
+^0.3.0`), so installing it silently fetched and nested a second, older copy
+  of the package inside the first. The nested copy is `0.3.0`: no `eg-conform`,
+  and older behaviour for anything that resolved to it. Removed. `0.4.0` is
+  broken for consumers and should not be used.
+- `npm ci` failed on a lockfile out of sync with that dependency, which is what
+  surfaced it.
+- Formatting: `eg-demo.ts` had been failing the `prettier --check` half of
+  `npm run lint` since it landed, so the lint job was already red before this
+  release. Fixed along with the new files.
+
 ## [0.4.0]
 
 ### Added
 
 - **`eg-conform`, a conformance checker for the receipt format.** A third bin
   alongside `eg-verify` and `eg-demo`. It answers a different question than
-  `eg-verify`: not *is this evidence sound* but *which rules did my
-  implementation get right*, reported per rule with what the specification
+  `eg-verify`: not _is this evidence sound_ but _which rules did my
+  implementation get right_, reported per rule with what the specification
   requires and what the file actually contains. Thirteen rules, all derived
   from `docs/RECEIPTS.md`. Exit 0 conformant, 1 a rule failed, 2 unreadable.
   `eg-verify`'s exit codes and output are unchanged; it remains the trust tool.

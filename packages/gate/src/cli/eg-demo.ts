@@ -94,7 +94,12 @@ async function main(): Promise<number> {
   } catch (e) {
     if (!(e instanceof DeniedError)) throw e;
     line("DENY   " + e.decision.reason);
-    line("       receipt " + e.decision.receipt.receiptId + "  signed: " + Boolean(e.decision.receipt.sig));
+    line(
+      "       receipt " +
+        e.decision.receipt.receiptId +
+        "  signed: " +
+        Boolean(e.decision.receipt.sig),
+    );
     line("       the http.post never ran. Nothing left the machine.");
   }
 

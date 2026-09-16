@@ -21,9 +21,15 @@ function chain(n: number, mutate?: (r: Record<string, unknown>, i: number) => vo
   for (let i = 0; i < n; i++) {
     const u: Record<string, unknown> = {
       receiptId: `019f7833-fddc-7a2b-8070-fa732536e9${String(i).padStart(2, "0")}`,
-      ts: "2026-09-16T00:00:00.000Z", sessionId: "s", tool: "http.get",
-      argsHash: h("{}"), decision: i === 0 ? "deny" : "allow", reason: "r",
-      policyVersion: "v1", prevReceiptHash: prev, kid,
+      ts: "2026-09-16T00:00:00.000Z",
+      sessionId: "s",
+      tool: "http.get",
+      argsHash: h("{}"),
+      decision: i === 0 ? "deny" : "allow",
+      reason: "r",
+      policyVersion: "v1",
+      prevReceiptHash: prev,
+      kid,
     };
     const sig = edSign(null, hb(canonicalJson(u)), privateKey).toString("base64url");
     const r: Record<string, unknown> = { ...u, sig };
@@ -56,24 +62,32 @@ describe("each rule fails independently, and says why", () => {
   });
 
   it("R02 missing required field", () => {
-    const { lines, keys } = chain(1, (rec) => { delete rec.reason; });
+    const { lines, keys } = chain(1, (rec) => {
+      delete rec.reason;
+    });
     const r = checkConformance(lines, keys);
     expect(failed(r, "R02")).toBe(true);
     expect(ruleOf(r, "R02").find((f) => f.status === "fail")?.expected).toContain("reason");
   });
 
   it("R04 receiptId that is not uuidv7", () => {
-    const { lines, keys } = chain(1, (rec) => { rec.receiptId = "019f7833-fddc-4a2b-8070-fa732536e98b"; });
+    const { lines, keys } = chain(1, (rec) => {
+      rec.receiptId = "019f7833-fddc-4a2b-8070-fa732536e98b";
+    });
     expect(failed(checkConformance(lines, keys), "R04")).toBe(true);
   });
 
   it("R05 timestamp without a UTC designator", () => {
-    const { lines, keys } = chain(1, (rec) => { rec.ts = "2026-09-16T00:00:00+01:00"; });
+    const { lines, keys } = chain(1, (rec) => {
+      rec.ts = "2026-09-16T00:00:00+01:00";
+    });
     expect(failed(checkConformance(lines, keys), "R05")).toBe(true);
   });
 
   it("R07 a decision that is neither allow nor deny", () => {
-    const { lines, keys } = chain(1, (rec) => { rec.decision = "maybe"; });
+    const { lines, keys } = chain(1, (rec) => {
+      rec.decision = "maybe";
+    });
     expect(failed(checkConformance(lines, keys), "R07")).toBe(true);
   });
 
@@ -84,11 +98,20 @@ describe("each rule fails independently, and says why", () => {
     const pub = Buffer.from((publicKey.export({ format: "jwk" }) as { x: string }).x, "base64url");
     // The mistake: hash the base64url TEXT of the key, not its raw bytes.
     const wrongKid = createHash("sha3-512")
-      .update(pub.toString("base64url")).digest("hex").slice(0, 16);
+      .update(pub.toString("base64url"))
+      .digest("hex")
+      .slice(0, 16);
     const u: Record<string, unknown> = {
-      receiptId: "019f7833-fddc-7a2b-8070-fa732536e98b", ts: "2026-09-16T00:00:00.000Z",
-      sessionId: "s", tool: "http.get", argsHash: h("{}"), decision: "allow",
-      reason: "r", policyVersion: "v1", prevReceiptHash: "genesis", kid: wrongKid,
+      receiptId: "019f7833-fddc-7a2b-8070-fa732536e98b",
+      ts: "2026-09-16T00:00:00.000Z",
+      sessionId: "s",
+      tool: "http.get",
+      argsHash: h("{}"),
+      decision: "allow",
+      reason: "r",
+      policyVersion: "v1",
+      prevReceiptHash: "genesis",
+      kid: wrongKid,
     };
     const sig = edSign(null, hb(canonicalJson(u)), privateKey).toString("base64url");
     const lines = [JSON.stringify({ ...u, sig })];
@@ -101,12 +124,18 @@ describe("each rule fails independently, and says why", () => {
 
   it("R11 a signature over the receipt INCLUDING sig", () => {
     const { lines, keys } = chain(2);
-    const tampered = lines.map((l) => { const r = JSON.parse(l); r.tool = "http.delete"; return JSON.stringify(r); });
+    const tampered = lines.map((l) => {
+      const r = JSON.parse(l);
+      r.tool = "http.delete";
+      return JSON.stringify(r);
+    });
     expect(failed(checkConformance(tampered, keys), "R11")).toBe(true);
   });
 
   it("R12 genesis written as 128 zeros", () => {
-    const { lines, keys } = chain(1, (rec, i) => { if (i === 0) rec.prevReceiptHash = "0".repeat(128); });
+    const { lines, keys } = chain(1, (rec, i) => {
+      if (i === 0) rec.prevReceiptHash = "0".repeat(128);
+    });
     const r = checkConformance(lines, keys);
     expect(failed(r, "R12")).toBe(true);
     expect(ruleOf(r, "R12").find((f) => f.status === "fail")?.expected).toBe('"genesis"');
@@ -122,9 +151,16 @@ describe("each rule fails independently, and says why", () => {
     let prev = "genesis";
     for (let i = 0; i < 2; i++) {
       const u: Record<string, unknown> = {
-        receiptId: `019f7833-fddc-7a2b-8070-fa732536e9${i}0`, ts: "2026-09-16T00:00:00.000Z",
-        sessionId: "s", tool: "http.get", argsHash: h("{}"), decision: "allow",
-        reason: "r", policyVersion: "v1", prevReceiptHash: prev, kid,
+        receiptId: `019f7833-fddc-7a2b-8070-fa732536e9${i}0`,
+        ts: "2026-09-16T00:00:00.000Z",
+        sessionId: "s",
+        tool: "http.get",
+        argsHash: h("{}"),
+        decision: "allow",
+        reason: "r",
+        policyVersion: "v1",
+        prevReceiptHash: prev,
+        kid,
       };
       const sig = edSign(null, hb(canonicalJson(u)), privateKey).toString("base64url");
       lines.push(JSON.stringify({ ...u, sig }));
@@ -142,7 +178,8 @@ describe("the spec-derived canonicalizer agrees with the gate's", () => {
     for (const l of lines) {
       const r = JSON.parse(l) as Record<string, unknown>;
       expect(canonicalJson(r)).toBe(jcs(r));
-      const { sig, ...unsigned } = r;
+      const unsigned = { ...r };
+      delete unsigned.sig;
       expect(canonicalJson(unsigned)).toBe(jcs(unsigned));
     }
   });
@@ -156,7 +193,8 @@ describe("the spec-derived canonicalizer agrees with the gate's", () => {
       { n: [0, -0, 1e21, 1e-7, 0.1, -2.25] },
       { t: true, f: false, nul: null },
       [1, "two", { three: 3 }],
-      "bare", 42,
+      "bare",
+      42,
     ];
     for (const c of cases) expect(canonicalJson(c)).toBe(jcs(c));
   });
@@ -186,7 +224,9 @@ describe("the six negative vectors", () => {
     const { lines, keys } = chain(3);
     const t = lines.map((l, i) => {
       if (i !== 1) return l;
-      const r = JSON.parse(l); r.reason = "tampered"; return JSON.stringify(r);
+      const r = JSON.parse(l);
+      r.reason = "tampered";
+      return JSON.stringify(r);
     });
     const r = checkConformance(t, keys);
     expect(r.ok).toBe(false);
@@ -229,7 +269,9 @@ describe("the six negative vectors", () => {
     const { lines } = chain(2);
     const other = generateKeyPairSync("ed25519");
     const otherPub = Buffer.from(
-      (other.publicKey.export({ format: "jwk" }) as { x: string }).x, "base64url");
+      (other.publicKey.export({ format: "jwk" }) as { x: string }).x,
+      "base64url",
+    );
     // Same kid the receipts name, but the wrong bytes behind it.
     const kid = JSON.parse(lines[0]!).kid as string;
     const r = checkConformance(lines, new Map([[kid, new Uint8Array(otherPub)]]));
@@ -248,13 +290,23 @@ describe("the six negative vectors", () => {
   it("V5 receipts appended under a rotated key are never silently skipped", () => {
     const a = chain(2);
     const kb = generateKeyPairSync("ed25519");
-    const pubB = Buffer.from((kb.publicKey.export({ format: "jwk" }) as { x: string }).x, "base64url");
+    const pubB = Buffer.from(
+      (kb.publicKey.export({ format: "jwk" }) as { x: string }).x,
+      "base64url",
+    );
     const kidB = kidFor(pubB);
     const prev = h(canonicalJson(JSON.parse(a.lines[1]!)));
     const u: Record<string, unknown> = {
-      receiptId: "019f7833-fddc-7a2b-8070-fa732536e9ff", ts: "2026-09-16T00:00:00.000Z",
-      sessionId: "s", tool: "http.get", argsHash: h("{}"), decision: "allow",
-      reason: "r", policyVersion: "v1", prevReceiptHash: prev, kid: kidB,
+      receiptId: "019f7833-fddc-7a2b-8070-fa732536e9ff",
+      ts: "2026-09-16T00:00:00.000Z",
+      sessionId: "s",
+      tool: "http.get",
+      argsHash: h("{}"),
+      decision: "allow",
+      reason: "r",
+      policyVersion: "v1",
+      prevReceiptHash: prev,
+      kid: kidB,
     };
     const sig = edSign(null, hb(canonicalJson(u)), kb.privateKey).toString("base64url");
     const lines = [...a.lines, JSON.stringify({ ...u, sig })];
@@ -270,7 +322,8 @@ describe("the six negative vectors", () => {
     expect(failed(partial, "R09")).toBe(false);
 
     // Offered both keys, the same file is fully conformant.
-    const both = new Map(a.keys); both.set(kidB, new Uint8Array(pubB));
+    const both = new Map(a.keys);
+    both.set(kidB, new Uint8Array(pubB));
     expect(checkConformance(lines, both).ok).toBe(true);
   });
 
