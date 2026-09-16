@@ -14,3 +14,10 @@ export {
 export { verifyReceiptFile, type ReceiptKeySet } from "./verify.js";
 export { generateSigningKey, publicKeyBytes, fingerprint, toB64u, fromB64u } from "./crypto.js";
 export { jcs } from "./jcs.js";
+export {
+  checkConformance,
+  kidFor,
+  type ConformanceReport,
+  type Finding,
+  type Status,
+} from "./conform/index.js";

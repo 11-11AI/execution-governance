@@ -18,6 +18,33 @@ bumps the major.
 
 Nothing yet.
 
+## [0.4.0]
+
+### Added
+
+- **`eg-conform`, a conformance checker for the receipt format.** A third bin
+  alongside `eg-verify` and `eg-demo`. It answers a different question than
+  `eg-verify`: not *is this evidence sound* but *which rules did my
+  implementation get right*, reported per rule with what the specification
+  requires and what the file actually contains. Thirteen rules, all derived
+  from `docs/RECEIPTS.md`. Exit 0 conformant, 1 a rule failed, 2 unreadable.
+  `eg-verify`'s exit codes and output are unchanged; it remains the trust tool.
+- `checkConformance()` and `kidFor()` are exported from the package for
+  programmatic use.
+- `docs/CONFORMANCE.md`, and a `Numbers` section in `docs/RECEIPTS.md` pinning
+  number formatting in canonical JSON.
+
+### Fixed
+
+- **A receipt signed by a key the checker was not given is no longer skipped.**
+  It is now reported, naming the kid. Previously a file with receipts appended
+  under a rotated key could report every rule passing on the strength of the
+  lines that could be checked, saying nothing about the ones that could not.
+- The `kid` rule no longer reports a derivation error for a receipt signed by
+  an unknown key. That claim is now made only when the signature verifies under
+  a supplied key, which proves the key is right and the kid is wrong. A file
+  spanning a key rotation is not an implementation bug.
+
 ## [0.2.1] - 2026-08-25
 
 **No runtime code changed.** `packages/gate/src` and `packages/mcp-gate/src` are

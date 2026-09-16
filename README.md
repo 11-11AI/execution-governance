@@ -163,6 +163,8 @@ Any error, timeout, unreachable engine, malformed policy, or missing decision re
 ## Docs
 
 - `docs/RECEIPTS.md`: the exact receipt format and verification.
+- `docs/CONFORMANCE.md`: `eg-conform`, for checking your own implementation
+  against that format, rule by rule.
 - `docs/POLICY.md`: the policy schema and the canonical starter policy.
 - `docs/VECTORS.md`: every adversarial vector and the decision it gets. Generated.
 - `docs/verify/index.html`: the browser verifier. Offline, no build step, no server.

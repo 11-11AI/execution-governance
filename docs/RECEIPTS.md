@@ -11,6 +11,28 @@ Receipts and args are serialized with canonical JSON, RFC 8785 style:
 - Standard JSON string escaping.
 - Keys whose value is undefined are omitted.
 
+### Numbers
+
+Every receipt field is a string, so this rule does not affect receipts
+themselves. It applies to `args`, which is canonicalized and hashed into
+`argsHash`, and an implementation that formats numbers differently there will
+produce a different `argsHash` for the same call.
+
+- A number is serialized exactly as ECMAScript renders it, the shortest
+  representation that round-trips to the same IEEE-754 double. This is what
+  `JSON.stringify` emits, and what RFC 8785 § 3.2.2.3 requires.
+- No trailing `.0`, no leading `+`, no leading zeros: `1`, not `1.0`; `0.1`,
+  not `.1` or `0.10`.
+- `-0` serializes as `0`.
+- Exponential notation follows ECMAScript exactly: used at or above `1e21`
+  (`1e+21`) and for small magnitudes (`1e-7`), decimal in between.
+- `NaN`, `Infinity` and `-Infinity` have no canonical form. Refuse to
+  canonicalize them rather than substituting `null`.
+- `undefined` has no canonical form either. As an object value the key is
+  omitted; as an array element it becomes `null`, because omitting it would
+  change the array's length. It must never be rendered as a bare `undefined`
+  token, which is not JSON and which naive string concatenation will produce.
+
 Signer and verifier must serialize identically or signatures will not verify.
 
 ## Fields

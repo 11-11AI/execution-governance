@@ -1,6 +1,6 @@
 {
   "name": "@11ai/execution-governance",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Pre-execution authorization for AI agent tool calls: allow or deny before execution, fail-closed, with a signed receipt for every decision.",
   "license": "Apache-2.0",
   "repository": {
@@ -24,7 +24,8 @@
   },
   "bin": {
     "eg-verify": "dist/cli/eg-verify.js",
-    "eg-demo": "dist/cli/eg-demo.js"
+    "eg-demo": "dist/cli/eg-demo.js",
+    "eg-conform": "dist/cli/eg-conform.js"
   },
   "files": [
     "dist",
@@ -54,6 +55,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@11ai/execution-governance": "^0.3.0",
     "@noble/hashes": "^1.4.0",
     "yaml": "^2.4.0"
   }
