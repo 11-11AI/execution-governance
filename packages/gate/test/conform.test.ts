@@ -448,6 +448,28 @@ const SABOTAGE: Array<{ rule: string; what: string; make: () => ReturnType<typeo
 
   {
     rule: "R05",
+    what: "a timestamp with whole seconds and no milliseconds",
+    make: () =>
+      build({
+        n: 1,
+        before: (u) => {
+          u.ts = "2026-09-16T00:00:00Z";
+        },
+      }),
+  },
+  {
+    rule: "R05",
+    what: "a timestamp with microsecond precision",
+    make: () =>
+      build({
+        n: 1,
+        before: (u) => {
+          u.ts = "2026-09-16T00:00:00.000000Z";
+        },
+      }),
+  },
+  {
+    rule: "R05",
     what: "a timestamp with a +01:00 offset instead of Z",
     make: () =>
       build({

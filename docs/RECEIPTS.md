@@ -39,19 +39,39 @@ Signer and verifier must serialize identically or signatures will not verify.
 
 Each receipt object has these fields:
 
-- `receiptId`: a uuid version 7 (time ordered).
-- `ts`: ISO 8601 UTC timestamp.
+- `receiptId`: a uuid version 7. The version nibble and the RFC 4122 variant
+  bits are normative. **Time ordering is NOT normative**: do not rely on
+  receipts being sorted by id, and do not reject a file because they are not.
+  Clock adjustment and concurrent emitters make ordering unenforceable, and an
+  unenforceable rule should not be a requirement. Ordering is established by the
+  chain, not by the id.
+- `ts`: ISO 8601 UTC with **exactly three fractional digits and a `Z`**, for
+  example `2026-09-16T00:00:00.000Z`. This is what `new Date().toISOString()`
+  produces and it is normative. Whole seconds (`...:00Z`) and microsecond
+  precision are both non-conformant: the same instant written two ways is two
+  different canonical forms, and therefore two different signatures.
 - `sessionId`: the caller session id.
 - `agentId`: optional logical agent id.
 - `tool`: the namespaced tool name, for example `fs.write`.
-- `argsHash`: sha3-512 hex of the canonical JSON of the request args.
+- `argsHash`: sha3-512 hex of the UTF-8 bytes of the canonical JSON of the
+  request args. When args are absent the canonical form is the literal `null`,
+  four bytes, so `argsHash` is `sha3_512("null")`. If the args have **no**
+  canonical form -- a non-finite number, a bigint, a function, a symbol -- the
+  call is refused and no receipt is written. There is no substitute value: a
+  receipt that cannot commit to its arguments must not claim to.
 - `decision`: `allow` or `deny`.
 - `reason`: a short human readable reason.
 - `policyVersion`: the policy version string reported by the engine.
 - `parentReceiptId`: optional, the receipt this call depends on, used for absorbing deny.
 - `prevReceiptHash`: sha3-512 hex of the previous receipt in this sink, or the string `genesis` for the first receipt.
 - `kid`: the first 16 hex chars of the sha3-512 of the public key.
-- `sig`: the signature, base64url. See below.
+- `sig`: the signature, base64url, **unpadded**. No `=` characters. A padded
+  encoding is a different string, and therefore different canonical bytes and a
+  different chain hash.
+
+`agentId` and `parentReceiptId` are **omitted entirely** when absent. They are
+not written as `null`. An explicit null is a different canonical form and will
+not verify.
 
 ## Signature
 
@@ -64,6 +84,17 @@ sig     = base64url( Ed25519_sign( privateKey, message ) )
 
 The public key is Ed25519, shared as base64url of the 32 byte key. `kid` is the first 16 hex chars of `sha3_512(publicKey)`.
 
+Three details that decide whether a second implementation agrees with this one:
+
+- **`sha3-512` means SHA3-512 as standardised in FIPS 202**, not Keccak-512.
+  The two differ in padding and produce entirely different digests.
+- **The message signed is the 64 raw digest bytes**, not their 128-character hex
+  representation. Ed25519 is used directly over those bytes; this is not
+  Ed25519ph.
+- **The canonical JSON string is encoded as UTF-8** before hashing.
+
+`kid` is computed over the **raw 32 key bytes**, not over their base64url text.
+
 ## Chain
 
 Each receipt links to the previous one:
@@ -74,6 +105,24 @@ prevReceiptHash(receipt 0) = "genesis"
 ```
 
 Because the chain hash covers the full previous receipt including its signature, reordering or editing any earlier receipt breaks the chain from that point on.
+
+## Unknown fields
+
+A receipt may carry fields not listed above. They are **permitted**, and they
+are part of the canonical form, which means they are signed and covered by the
+chain hash like any other field.
+
+A verifier **MUST** include unknown fields when it recomputes the canonical JSON
+for a signature or a chain hash. Dropping a field it does not recognise changes
+the bytes and verification will fail. This is the forward-compatibility
+mechanism: an older verifier can still check a receipt written by a newer
+emitter, provided it does not discard what it cannot interpret.
+
+## File format
+
+Receipts are written as JSONL: one JSON object per line, UTF-8, `\n` separated,
+with a trailing newline after the final receipt. Readers should ignore blank
+lines. The chain order is file order.
 
 ## Verification
 

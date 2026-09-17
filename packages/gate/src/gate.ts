@@ -9,7 +9,7 @@ import type {
   Receipt,
   VerifyReport,
 } from "./types.js";
-import { DeniedError } from "./types.js";
+import { DeniedError, UncanonicalizableArgsError } from "./types.js";
 import { fingerprint, generateSigningKey, publicKeyBytes, sha3Hex, toB64u } from "./crypto.js";
 import { jcs } from "./jcs.js";
 import { buildReceipt, receiptHash } from "./receipt.js";
@@ -112,6 +112,13 @@ class GateImpl implements Gate {
   }
 
   async authorize(req: ActionRequest): Promise<Decision> {
+    // Before anything else. If the args have no canonical form there is no
+    // argsHash to put in a receipt, so there is no honest receipt to write and
+    // no point asking the engine about a call that cannot be represented.
+    // Throwing here means govern() never runs the action and the chain head
+    // does not move -- the same fail-closed shape as an unwritable sink below.
+    const canonicalArgs = this.canonicalArgs(req.args);
+
     let decision: DecisionValue;
     let reason: string;
     let policyVersion: string;
@@ -145,7 +152,7 @@ class GateImpl implements Gate {
     }
 
     // 3. Build and sign the receipt, chained to the current head.
-    const argsHash = sha3Hex(this.canonicalArgs(req.args));
+    const argsHash = sha3Hex(canonicalArgs);
     const prev = this.chainHead ?? "genesis";
     const receipt = buildReceipt(
       {
@@ -198,12 +205,26 @@ class GateImpl implements Gate {
     }
   }
 
+  /**
+   * The exact bytes argsHash commits to.
+   *
+   * THERE IS NO FALLBACK HERE, AND THERE MUST NOT BE ONE.
+   *
+   * This used to catch and hash `JSON.stringify(String(args))`. String(obj) is
+   * "[object Object]" for every object, so {n: Infinity}, {n: NaN} and {b: 1n}
+   * all hashed to the same value: argsHash stopped committing to the arguments
+   * at all, while the receipt still verified. Any caller able to influence one
+   * argument could trigger it deliberately.
+   *
+   * Absent args canonicalize to the literal `null`, which is a real canonical
+   * form and not a substitution. Anything JCS refuses throws, and the caller
+   * fails closed.
+   */
   private canonicalArgs(args: unknown): string {
     try {
       return jcs(args ?? null);
-    } catch {
-      // Non canonicalizable args still get a stable hash input rather than throwing.
-      return JSON.stringify(String(args));
+    } catch (e) {
+      throw new UncanonicalizableArgsError((e as Error).message);
     }
   }
 }

@@ -16,6 +16,52 @@ bumps the major.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.4.2]
+
+### Fixed
+
+- **`argsHash` stopped committing to the arguments for any value that could not
+  be canonicalized.** `Gate#canonicalArgs` caught the canonicalization error and
+  hashed `JSON.stringify(String(args))` instead. `String(obj)` is
+  `"[object Object]"` for every object, so `{n: Infinity}`, `{n: NaN}` and
+  `{b: 1n}` all produced the same `argsHash`, while the receipt still signed and
+  verified. Any caller able to influence one argument could trigger it
+  deliberately and collapse the commitment. **Every published version from
+  0.1.0 through 0.4.1 is affected**, determined by running each one.
+
+  There is no fallback now. An argument with no canonical form cannot be
+  governed, so the call fails closed: `UncanonicalizableArgsError` is thrown
+  before the engine is consulted, no receipt is written, and the chain head does
+  not move. The error is deliberately distinct from `DeniedError`, because
+  "policy denied this" and "this could not be represented" are different facts.
+
+### Changed
+
+- **`ts` precision is now normative**: exactly three fractional digits and a
+  `Z`. The emitter always produced this; the conformance checker accepted any
+  precision, so an implementation could pass conformance while producing
+  different canonical bytes for the same instant. R05 is tightened to match.
+- **`receiptId` time ordering is explicitly NOT normative**, and now says so.
+  The v7 version and variant bits remain required. Clock adjustment and
+  concurrent emitters make ordering unenforceable, and an unenforceable rule
+  should not be a requirement. Ordering is established by the chain.
+- **Unknown fields are documented as permitted**, and as participating in the
+  canonical form. A verifier MUST include them when recomputing, or verification
+  fails. This is the forward-compatibility mechanism.
+
+### Documentation
+
+`docs/RECEIPTS.md` now states what previously only the implementation knew: that
+`sig` is unpadded base64url, that the signed message is the 64 raw digest bytes
+rather than their hex, that `sha3-512` means FIPS 202 and not Keccak, that the
+canonical string is hashed as UTF-8, that absent args canonicalize to the
+literal `null`, that optional fields are omitted rather than written as `null`,
+and how the JSONL file is framed. Each of these was a question a second
+implementer would have had to ask us, which means the format was not
+self-describing.
+
 ### Changed
 
 - **Publishing moves into CI, tag-triggered, with npm provenance.** 0.3.0, 0.4.0

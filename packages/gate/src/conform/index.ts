@@ -77,9 +77,19 @@ function isUuidV7(s: string): boolean {
   return s[14] === "7" && "89ab".includes(s[19]!);
 }
 
-/** ISO 8601 with an explicit UTC designator, and a real instant. */
+/**
+ * ISO 8601, UTC, with EXACTLY three fractional digits.
+ *
+ * Normative, and tightened deliberately. The emitter uses
+ * `new Date().toISOString()`, which always produces exactly milliseconds and a
+ * Z. This rule previously accepted any number of fractional digits or none, so
+ * an implementation could pass conformance while producing different canonical
+ * bytes for the same instant -- and different bytes mean a different signature
+ * and a different chain hash. A checker looser than the format it checks is a
+ * format failure, not a kindness.
+ */
 function isIsoUtc(s: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(s)) return false;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(s)) return false;
   return Number.isFinite(Date.parse(s));
 }
 
@@ -232,7 +242,12 @@ export function checkConformance(
       (r) => isUuidV7(String(r.receiptId)),
       "a uuid v7 (version nibble 7, RFC 4122 variant)",
     ],
-    ["R05", "ts is ISO 8601 UTC", (r) => isIsoUtc(String(r.ts)), "ISO 8601 with a Z designator"],
+    [
+      "R05",
+      "ts is ISO 8601 UTC with exactly milliseconds",
+      (r) => isIsoUtc(String(r.ts)),
+      "ISO 8601 UTC with exactly three fractional digits and a Z, as new Date().toISOString() produces",
+    ],
     [
       "R06",
       "argsHash is sha3-512 hex",
