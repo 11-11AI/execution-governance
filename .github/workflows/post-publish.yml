@@ -103,3 +103,23 @@ jobs:
             3) echo "::error::COULD NOT RUN: the assertions never executed. Not a pass."; exit 1 ;;
             *) echo "::error::FAIL: the published package did not hold (exit $code). Report it; do not deprecate anything."; exit 1 ;;
           esac
+
+      - name: The published package must carry provenance linking to this repo
+        working-directory: ${{ env.PROJECT }}
+        run: |
+          set -euo pipefail
+          # The attestation is the whole reason publishing moved into CI, and
+          # until now nothing checked it was there. Note this deliberately does
+          # NOT lean on `npm audit signatures` alone: against this tree that
+          # command reports "1 package has a verified attestation" and exits 0,
+          # and the one is @noble/hashes. A bare exit-code check would go green
+          # exactly when the property it guarantees is missing.
+          set +e
+          node "$GITHUB_WORKSPACE/scripts/verify-provenance.mjs"
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "PASS: published provenance verified against this repository" ;;
+            3) echo "::error::COULD NOT RUN: provenance could not be checked. Not a pass."; exit 1 ;;
+            *) echo "::error::FAIL: the published package's provenance is absent, unverifiable, or points elsewhere. Report it; do not deprecate anything."; exit 1 ;;
+          esac

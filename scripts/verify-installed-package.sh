@@ -33,7 +33,8 @@ echo "verifying installed @11ai/execution-governance@$VERSION"
 
 # --- the package must not depend on itself ---------------------------------
 # Read from the INSTALLED manifest, which for a registry install is the
-# published manifest. This is the assertion 0.4.0 needed and did not have.
+# published manifest. This is the assertion 0.4.0 needed and did not have: it
+# is the one defect of the two that actually reached the registry.
 node -e '
   const m = require("./node_modules/@11ai/execution-governance/package.json");
   const fields = ["dependencies", "peerDependencies", "optionalDependencies"];
@@ -95,11 +96,16 @@ node -e '
 # A conformance checker is only proven by what it refuses. Give it a valid,
 # well-formed Ed25519 public key that did not sign these receipts.
 #
-# Assert on the RULE OUTCOME, not the exit code. In 0.4.0 eg-conform skipped
-# every receipt whose kid it held no key for and then reported every rule
-# passing -- it exited 0, so an exit-code assertion would have called that
-# green. The distinction that catches it is fail versus not_applicable on the
-# signature rule.
+# Assert on the RULE OUTCOME, not the exit code. An earlier, unpublished state
+# of eg-conform skipped every receipt whose kid it held no key for and then
+# reported every rule passing -- it exited 0, so an exit-code assertion would
+# have called that green. The distinction that catches it is fail versus
+# not_applicable on the signature rule.
+#
+# THIS IS A REGRESSION LOCK, NOT A FIX. That behaviour never shipped: it was
+# found by testing and squashed before release, and the published 0.4.0 and
+# 0.4.1 both report this correctly. Nothing pinned it until now, which is the
+# only reason it is worth a check.
 OTHER="$(node -e '
   const { generateKeyPairSync } = require("node:crypto");
   const { publicKey } = generateKeyPairSync("ed25519");
@@ -121,7 +127,8 @@ node -e '
     console.error(`FAIL: signature rule R11 reported "${worst}" for a key that did not sign these receipts.`);
     console.error("  A rule that could not be checked must not be reported as anything but a failure");
     console.error("  here: the caller supplied the keys and is asking whether these receipts verify.");
-    console.error("  This is the 0.4.0 behaviour, and it exited 0 while reporting every rule passing.");
+    console.error("  A checker that skips what it cannot verify, and then reports every rule");
+    console.error("  passing, exits 0 while proving nothing. That is what this pins against.");
     process.exit(1);
   }
   console.log("ok: a non-signing key is refused, and R11 is reported failed rather than skipped");

@@ -16,7 +16,38 @@ bumps the major.
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **Publishing moves into CI, tag-triggered, with npm provenance.** 0.3.0, 0.4.0
+  and 0.4.1 were published by hand; no tag exists for any of them, so
+  `release.yml` never ran and neither did `npm ci`, lint, the suite or the
+  tarball check. The gate was never broken, it was never consulted. Publishing
+  from CI also produces a provenance attestation linking the published tarball
+  to the commit and workflow that built it, checkable by a third party without
+  asking us.
+- `publish` now requires every gate job to have **succeeded**, not merely to
+  have not failed. In the 0.4.0 run `npm ci` failed first and the tarball check
+  was _skipped_, so it had no verdict at all. Skipped, cancelled and failed are
+  reported distinctly.
+- A registry-version guard refuses to re-release a version that is already
+  published, as a clean no-op rather than a failure, and fails closed when the
+  registry does not answer.
+
+### Added
+
+- `verify-tarball.sh` reads the packed tarball's own manifest and fails if the
+  package lists itself in `dependencies`, `peerDependencies` or
+  `optionalDependencies`, and asserts no copy is nested inside the install.
+  Both, deliberately: the manifest check is deterministic, while the nesting it
+  causes is environment-dependent and did not reproduce on a later install of
+  the same broken version.
+- All three bins are exercised against the packed artifact before publication
+  and against the published package afterwards. `eg-conform` and `eg-demo` were
+  run by no CI job at all before this.
+- A sabotage test for every conformance rule, and a coverage assertion that
+  fails the build on any rule the checker can emit that no test makes fail.
+  R03, R06, R08 and R10 had none: implemented, passing on every run, never once
+  observed failing.
 
 ## [0.4.1]
 
@@ -51,10 +82,19 @@ Nothing yet.
 
 ### Fixed
 
-- **A receipt signed by a key the checker was not given is no longer skipped.**
-  It is now reported, naming the kid. Previously a file with receipts appended
-  under a rotated key could report every rule passing on the strength of the
-  lines that could be checked, saying nothing about the ones that could not.
+- **A receipt signed by a key the checker was not given is never skipped.** It
+  is reported, naming the kid. An earlier state of this work skipped it and then
+  reported every rule passing, so a file with receipts appended under a rotated
+  key looked fully conformant on the strength of the lines that could be
+  checked, saying nothing about the ones that could not.
+
+  To be accurate about when: `eg-conform` is new in this release, and that
+  behaviour never reached a published version. It existed in an unpushed commit,
+  was found by testing rather than by review, and was squashed into this release
+  before it was published. There is no version of this package on the registry
+  that skips those receipts. Nothing pinned the correct behaviour until the
+  regression lock added later in CI, which is a lock and not a fix.
+
 - The `kid` rule no longer reports a derivation error for a receipt signed by
   an unknown key. That claim is now made only when the signature verifies under
   a supplied key, which proves the key is right and the kid is wrong. A file
