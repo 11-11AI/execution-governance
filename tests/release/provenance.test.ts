@@ -21,14 +21,36 @@ import {
 const REPO = "11-11AI/execution-governance";
 const base = {
   expectedRepo: REPO,
-  requiredFrom: "0.4.2",
+  requiredFrom: PROVENANCE_REQUIRED_FROM,
   registryReachable: true,
 };
 
 describe("the provenance floor", () => {
   it("is an exact semver string, not a date or a heuristic", () => {
     expect(parseSemver(PROVENANCE_REQUIRED_FROM)).not.toBeNull();
-    expect(PROVENANCE_REQUIRED_FROM).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(PROVENANCE_REQUIRED_FROM).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+  });
+
+  // THE GUARD ON THE `-0`. A comment can be ignored; a red build cannot.
+  //
+  // A prerelease sorts below its own release, so a plain "0.4.2" floor puts
+  // 0.4.2-rc.1 BELOW it -- and a release candidate is exactly what gets cut for
+  // the first release through a new pipeline. The floor must therefore itself
+  // be a prerelease, and the lowest one, so every shape of that version is at
+  // or above it.
+  it("carries a prerelease component, so prereleases of the floor are not below it", () => {
+    const parsed = parseSemver(PROVENANCE_REQUIRED_FROM)!;
+    expect(
+      parsed.pre,
+      "the floor must be a prerelease such as 0.4.2-0; see the comment on the constant",
+    ).not.toBeNull();
+    for (const pre of ["-0", "-alpha.1", "-rc.1", "-beta", ""]) {
+      const v = `${parsed.major}.${parsed.minor}.${parsed.patch}${pre}`;
+      expect(
+        compareSemver(v, PROVENANCE_REQUIRED_FROM),
+        `${v} must not sort below the floor`,
+      ).toBeGreaterThanOrEqual(0);
+    }
   });
 
   // 0.4.1 was the last hand-published release. The floor must be above it, or
@@ -48,7 +70,19 @@ describe("the six outcomes", () => {
   });
 
   it("2. at or above the floor and absent is FAIL, red", () => {
-    for (const v of ["0.4.2", "0.5.0", "1.0.0"]) {
+    // The prereleases are listed explicitly and first. A release candidate for
+    // the first CI release is the realistic first use of this pipeline, and
+    // with a plain "0.4.2" floor every one of these returned NOT_APPLICABLE
+    // with exit 0.
+    for (const v of [
+      "0.4.2-0",
+      "0.4.2-alpha.1",
+      "0.4.2-rc.1",
+      "0.4.2",
+      "0.5.0",
+      "0.5.0-rc.1",
+      "1.0.0",
+    ]) {
       const r = classifyProvenance({ ...base, version: v, hasAttestation: false });
       expect(r.outcome, `${v} should fail`).toBe(Outcome.FAIL);
       expect(r.reason).toBe("absent");
@@ -128,21 +162,31 @@ describe("NOT_APPLICABLE is not a softened FAIL", () => {
   // THE ONE THAT MATTERS. If this ever passes for a version at or above the
   // floor, the requirement has silently become optional.
   it("is UNREACHABLE for any version at or above the floor", () => {
-    const versions = [
+    // LITERAL VERSION STRINGS, NOT A COMPUTED SET.
+    //
+    // The previous version of this sweep filtered its own inputs with
+    //     if (compareSemver(v, FLOOR) < 0) continue;
+    // which used the comparison under test to decide what to test. The failing
+    // cases removed themselves: 0.4.2-rc.1 was in the list and was skipped
+    // every run. A sweep that derives its inputs from the thing it is testing
+    // cannot find this class of bug, so these are hardcoded.
+    const atOrAbove = [
+      "0.4.2-0",
+      "0.4.2-alpha.1",
+      "0.4.2-rc.1",
       "0.4.2",
       "0.4.3",
       "0.4.10",
+      "0.5.0-rc.1",
       "0.5.0",
       "0.9.9",
+      "1.0.0-rc.1",
       "1.0.0",
       "1.0.1",
       "2.0.0",
       "10.0.0",
-      "1.0.0-rc.1",
-      "0.4.2-alpha.1",
     ];
-    for (const v of versions) {
-      if (compareSemver(v, PROVENANCE_REQUIRED_FROM) < 0) continue; // prereleases below the floor
+    for (const v of atOrAbove) {
       for (const hasAttestation of [true, false]) {
         for (const repo of [`https://github.com/${REPO}`, "https://github.com/elsewhere/x", null]) {
           const r = classifyProvenance({
@@ -158,6 +202,21 @@ describe("NOT_APPLICABLE is not a softened FAIL", () => {
           ).not.toBe(Outcome.NOT_APPLICABLE);
         }
       }
+    }
+  });
+
+  // The other half, also literal: these predate the requirement and must stay
+  // NOT_APPLICABLE, so the fix above cannot be "call everything a failure".
+  it("remains reachable for versions genuinely below the floor", () => {
+    for (const v of ["0.1.0", "0.2.1", "0.3.0", "0.4.0", "0.4.1-rc.1", "0.4.1"]) {
+      const r = classifyProvenance({
+        ...base,
+        requiredFrom: PROVENANCE_REQUIRED_FROM,
+        version: v,
+        hasAttestation: false,
+      });
+      expect(r.outcome, `${v} predates the floor`).toBe(Outcome.NOT_APPLICABLE);
+      expect(EXIT[r.outcome]).toBe(0);
     }
   });
 
