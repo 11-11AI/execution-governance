@@ -39,6 +39,21 @@ Nothing yet.
 
 ### Changed
 
+- **`@11ai/mcp-gate` moves to 0.4.2, in lockstep with the gate**, and its
+  dependency becomes `^0.4.2`. It previously depended on `^0.2.1`, so installing
+  it pulled an affected gate, and that range could never accept the fix. This
+  changelog already claimed the two packages are versioned in lockstep; they
+  were not, and making the claim true was the smaller change. The two-minor jump
+  is not meaningful under 0.x.
+
+  **Independent per-package versions and tags are probably the better long-term
+  answer**, and that is a separate, unhurried decision. It was deliberately not
+  taken during a security release, on a pipeline that has never run end to end.
+
+- **A refused call leaves no receipt, and today the refusal is silent at the
+  gate.** See the limitation section in `docs/RECEIPTS.md`. The follow-up is an
+  operator-visible refusal record that does not pretend to be an authorization
+  receipt.
 - **`ts` precision is now normative**: exactly three fractional digits and a
   `Z`. The emitter always produced this; the conformance checker accepted any
   precision, so an implementation could pass conformance while producing

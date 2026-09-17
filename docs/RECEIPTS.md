@@ -106,6 +106,32 @@ prevReceiptHash(receipt 0) = "genesis"
 
 Because the chain hash covers the full previous receipt including its signature, reordering or editing any earlier receipt breaks the chain from that point on.
 
+## Limitation: a refused call leaves no receipt
+
+Stated plainly, because it is a real gap in a product that claims proof on every
+action.
+
+When arguments have no canonical form the call is refused and **nothing is
+written**. The action does not run, which is the half that matters. But there is
+no record that it was attempted, so a caller can avoid leaving a trace by
+sending arguments the format cannot represent -- a non-finite number or a bigint
+is enough.
+
+The alternative was a receipt carrying a placeholder `argsHash`, and that is the
+defect this refusal replaced: a receipt that verifies perfectly while committing
+to nothing. A record that lies is worse than a record that is absent.
+
+Today the refusal is **silent at the gate**. It surfaces only as a thrown
+`UncanonicalizableArgsError` propagating to the caller; the gate has no logging
+hook, and `GateOptions` exposes no error sink. Whether an operator ever sees it
+depends entirely on the host application's error handling, and an application
+that catches and discards the exception records nothing anywhere.
+
+The intended resolution is a refusal record that is operator-visible and does
+**not** pretend to be an authorization receipt: a separate stream that says an
+attempt was refused and why, without occupying a field it cannot honestly fill.
+That is not implemented.
+
 ## Unknown fields
 
 A receipt may carry fields not listed above. They are **permitted**, and they
