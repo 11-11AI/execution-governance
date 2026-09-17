@@ -89,6 +89,30 @@ export interface Gate {
   publicKey(): string;
 }
 
+/**
+ * Thrown when request args have no canonical form, so no honest argsHash exists.
+ *
+ * DISTINCT FROM DeniedError ON PURPOSE. "Policy denied this call" and "this call
+ * could not be represented well enough to govern" are different facts, and an
+ * operator has to be able to tell them apart. Collapsing them is the same error
+ * as reporting a skipped check as a passing one.
+ *
+ * Nothing is written and the chain does not advance: argsHash is defined as the
+ * sha3-512 of the canonical JSON of the args, so when there is no canonical JSON
+ * there is no value that field can honestly hold. Substituting one is what the
+ * defect this replaces actually did.
+ */
+export class UncanonicalizableArgsError extends Error {
+  readonly detail: string;
+  constructor(detail: string) {
+    super(
+      `fail-closed: arguments have no canonical form, so the call cannot be governed: ${detail}`,
+    );
+    this.name = "UncanonicalizableArgsError";
+    this.detail = detail;
+  }
+}
+
 /** Thrown by govern() when a request is denied. Carries the signed decision. */
 export class DeniedError extends Error {
   readonly decision: Decision;
