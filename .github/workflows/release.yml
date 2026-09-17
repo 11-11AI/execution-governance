@@ -10,14 +10,27 @@
 #   2. An NPM_TOKEN would be rejected. Do not add one, and do not "fix" a
 #      failing publish by adding one.
 #
-# Provenance is automatic under trusted publishing, so `--provenance` is not
-# passed explicitly. The OIDC exchange that replaces the token is what
-# `permissions: id-token: write` below enables; without it there is no
-# credential at all and the publish cannot authenticate.
+# WHY PUBLISHING LIVES HERE AT ALL
 #
-# npm >= 11.5.1 is required for trusted publishing. `setup-node` pins Node, not
-# npm, and the npm bundled with Node 20 predates it, so npm is upgraded
-# explicitly rather than assumed.
+# 0.3.0, 0.4.0 and 0.4.1 were published by hand. No tag exists for any of them,
+# so this workflow never ran, and neither did npm ci, lint, the test suite or
+# the tarball check. 0.4.0 was public at 23:47:51Z; the first check on that code
+# started at 23:50:31Z and went red on the defect that was already published.
+# The gate was never broken. It was never consulted.
+#
+# It is also what produces the npm provenance attestation: a verifiable link
+# from the published tarball back to this commit and this workflow, checkable by
+# a third party without asking us. For a package whose entire argument is that
+# you should not have to take our word for it, a hand-published artifact with
+# nothing but our word behind it was the wrong shape.
+#
+# THE GATE SET IS ALL-OR-NOTHING
+#
+# `publish` needs every gate job. A skipped job is not a passing job: in the
+# 0.4.0 run, `npm ci` failed first and `verify-tarball.sh` was SKIPPED, so the
+# tarball check had no verdict at all and an "it didn't fail" reading would have
+# been wrong. `gates-green` below inspects each result and refuses on anything
+# that is not literally success, naming which it was.
 name: release
 
 on:
@@ -25,50 +38,148 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
-  publish:
+  # --------------------------------------------------------------------------
+  # Does this release make sense before we spend anything on it?
+  # --------------------------------------------------------------------------
+  preflight:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write # required: this is what trusted publishing authenticates with
+    outputs:
+      gate_publish: ${{ steps.gate.outputs.should_publish }}
+      mcp_publish: ${{ steps.mcp.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
 
-      # Trusted publishing needs npm >= 11.5.1, which is newer than the npm
-      # bundled with Node 20.
+      # Fail before anything is published if the tag and the manifests
+      # disagree. Publishing package A at the tagged version and then finding
+      # package B is stale leaves a half-released pair that cannot be
+      # unpublished after 72 hours. This FAILS the workflow, it does not warn.
+      - name: Tag must match both package versions
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          for p in packages/gate packages/mcp-gate; do
+            V="$(node -p "require('./$p/package.json').version")"
+            N="$(node -p "require('./$p/package.json').name")"
+            if [ "$V" != "$TAG" ]; then
+              echo "::error::$N is $V but the tag is v$TAG"
+              exit 1
+            fi
+            echo "ok: $N@$V matches tag v$TAG"
+          done
+
+      # THE FOOT-GUN GUARD.
       #
-      # PINNED TO A MAJOR ON PURPOSE. This step was `npm@latest` and it broke the
-      # very first release: npm 12 raised its floor to Node ^22.22.2, the runner
-      # is on Node 20, and the job died with EBADENGINE before it reached a
-      # single test. `@latest` in a release workflow is an unpinned dependency
-      # that can only fail at the worst possible moment -- when you are cutting a
-      # release -- and it fails on someone else's schedule, not yours.
+      # This workflow fires on any v* tag, and no tags exist for 0.3.0, 0.4.0 or
+      # 0.4.1. Pushing v0.4.1 to tidy the record would start a release of a
+      # version that is already public. A version already on the registry is a
+      # CLEAN NO-OP here: the workflow succeeds and publishes nothing.
       #
-      # npm 11.19.0 requires node ^20.17.0 || >=22.9.0, so it runs here, and it
-      # is well past 11.5.1. Raising Node to 22 would also work; pinning is the
-      # fix either way, because the moving target is the actual defect.
-      # Trusted publishing needs npm >= 11.5.1.
-      #
-      # Node 24 is chosen so the runtime sits inside the support window of a
-      # current npm rather than at its edge. The first release died here on
-      # EBADENGINE: the step was `npm@latest`, npm 12 had raised its floor to
-      # Node ^22.22, and the runner was on Node 20. Nothing published.
-      #
-      # The npm version is still PINNED to a major rather than tracking latest.
-      # Node 24 removes today's incompatibility; the pin removes the class of
-      # failure. `@latest` in a release workflow is an unpinned dependency that
-      # can only break while you are cutting a release, and it moves on npm's
-      # schedule rather than yours.
-      #
-      # The floor is then asserted rather than assumed. Without this, an npm
-      # older than 11.5.1 fails much later, at `npm publish`, as an
-      # authentication error -- which reads as a credentials problem and invites
-      # someone to "fix" it by adding a token that trusted publishing rejects.
+      # The script fails closed. "The registry did not answer" is not "the
+      # version is absent", and treating it as absent is how you publish twice.
+      - name: Is this version already on the registry?
+        id: gate
+        run: node scripts/check-registry-version.mjs packages/gate
+      - name: Is the mcp-gate version already on the registry?
+        id: mcp
+        run: node scripts/check-registry-version.mjs packages/mcp-gate
+
+  # --------------------------------------------------------------------------
+  # The gates. Same checks a pull request gets, re-run here, because a tag is
+  # not evidence that CI passed on this commit.
+  # --------------------------------------------------------------------------
+  gate-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+
+  gate-tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      # Packs, inspects the tarball's own manifest for a self-dependency,
+      # installs it outside the workspace and asserts nothing is nested.
+      - run: bash scripts/verify-tarball.sh
+
+  # --------------------------------------------------------------------------
+  # Every gate must have SUCCEEDED. Not "not failed".
+  # --------------------------------------------------------------------------
+  gates-green:
+    runs-on: ubuntu-latest
+    needs: [preflight, gate-test, gate-tarball]
+    # always(), so that a failed or skipped gate produces a log line naming it
+    # rather than this job being skipped in silence too.
+    if: always()
+    steps:
+      - name: No gate may be anything but success
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          node -e '
+            const needs = JSON.parse(process.env.NEEDS);
+            const bad = [];
+            for (const [name, j] of Object.entries(needs)) {
+              const r = j.result;
+              if (r === "success") { console.log(`ok: ${name} succeeded`); continue; }
+              const why = {
+                failure:  "FAILED",
+                cancelled:"was CANCELLED",
+                skipped:  "was SKIPPED, which is not the same as passing: it never ran",
+              }[r] ?? `reported an unrecognised result: ${r}`;
+              bad.push(`${name} ${why}`);
+            }
+            if (bad.length) {
+              console.error("::error::Refusing to publish. Not every gate succeeded:");
+              for (const b of bad) console.error(`  - ${b}`);
+              process.exit(1);
+            }
+            console.log("every gate succeeded");
+          '
+
+  # --------------------------------------------------------------------------
+  # Publish. Reached only when every gate succeeded AND the version is new.
+  # --------------------------------------------------------------------------
+  publish:
+    runs-on: ubuntu-latest
+    needs: [preflight, gates-green]
+    permissions:
+      contents: read
+      id-token: write # required: this is what trusted publishing authenticates with
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1, newer than the npm bundled with
+      # Node 20. PINNED TO A MAJOR ON PURPOSE: this step was `npm@latest` and it
+      # broke the first release, when npm 12 raised its floor to Node ^22.22 and
+      # the runner was on Node 20. `@latest` in a release workflow is an
+      # unpinned dependency that can only fail while you are cutting a release,
+      # and it moves on npm's schedule rather than yours.
       - name: Install npm with trusted-publishing support
         run: |
           npm install -g npm@^11
@@ -84,41 +195,32 @@ jobs:
           ' "$NPM_V"
 
       - run: npm ci
-
-      # Publishing an untested build is how a broken release reaches users who
-      # cannot un-install it. The tag is not evidence that CI passed on this
-      # commit, so the gates run again here.
       - run: npm run build
-      - run: npm run lint
-      - run: npm test
 
-      # The same tarball check CI runs on every PR, so a release cannot ship a
-      # tarball shape that a PR would have rejected.
-      - run: bash scripts/verify-tarball.sh
-
-      # Fail before publishing anything if the tag and the manifests disagree.
-      # Publishing package A at the tagged version and then discovering package
-      # B is stale leaves a half-released pair that cannot be unpublished after
-      # 72 hours.
-      - name: Tag must match both package versions
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          for p in packages/gate packages/mcp-gate; do
-            V="$(node -p "require('./$p/package.json').version")"
-            N="$(node -p "require('./$p/package.json').name")"
-            if [ "$V" != "$TAG" ]; then
-              echo "::error::$N is $V but the tag is v$TAG"
-              exit 1
-            fi
-            echo "ok: $N@$V matches tag v$TAG"
-          done
-
-      # Published separately, in dependency order: mcp-gate depends on the gate
-      # SDK, so the SDK must exist at the new version first.
+      # Published in dependency order: mcp-gate depends on the gate SDK, so the
+      # SDK must exist at the new version first.
+      #
+      # --provenance is passed explicitly rather than relying on it being
+      # implied by trusted publishing, so that a change in that default cannot
+      # silently drop the attestation. Both the repository and the packages are
+      # public, which provenance requires.
       - name: Publish @11ai/execution-governance
-        run: npm publish
+        if: needs.preflight.outputs.gate_publish == 'true'
+        run: npm publish --provenance
         working-directory: packages/gate
 
       - name: Publish @11ai/mcp-gate
-        run: npm publish
+        if: needs.preflight.outputs.mcp_publish == 'true'
+        run: npm publish --provenance
         working-directory: packages/mcp-gate
+
+      - name: Nothing to publish
+        if: needs.preflight.outputs.gate_publish != 'true' && needs.preflight.outputs.mcp_publish != 'true'
+        run: echo "Both versions are already on the registry. Published nothing. This is a clean no-op."
+
+  # --------------------------------------------------------------------------
+  # Does what we just published actually work, installed the way a user gets it?
+  # --------------------------------------------------------------------------
+  post-publish:
+    needs: [publish]
+    uses: ./.github/workflows/post-publish.yml
