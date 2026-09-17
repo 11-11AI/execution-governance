@@ -7,9 +7,9 @@
 // Moving publication into CI was justified almost entirely by the provenance
 // attestation: a verifiable link from the published tarball to the commit and
 // workflow that built it, checkable by a third party without asking us. Nothing
-// checked that the attestation was actually there. A claim with no check on it
-// is the exact defect shape this work exists to remove, and it would have been
-// the one the gate itself introduced.
+// checked the attestation was actually there. A claim with no check on it is the
+// defect shape this work exists to remove, and it would have been the one the
+// gate itself introduced.
 //
 // WHY NOT JUST `npm audit signatures`
 //
@@ -25,46 +25,59 @@
 // up for THIS package by name and version, and `npm audit signatures` is used
 // for the cryptographic half rather than the existence half.
 //
-// THREE OUTCOMES
-//   exit 0  attestation present, verified, and pointing at this repository
-//   exit 1  absent, unverifiable, or pointing somewhere else
-//   exit 3  COULD NOT RUN: registry or attestation service unreachable
-// Callers must treat 3 as red. A check that cannot see must not report a pass.
+// OUTCOMES
+//   exit 0  PASS            attestation present, verified, bound to this repo
+//   exit 0  NOT_APPLICABLE  version predates the provenance requirement
+//   exit 1  FAIL            claimed and absent, or present and pointing elsewhere
+//   exit 3  COULD NOT RUN   registry or attestation service unreachable
+//
+// NOT_APPLICABLE is not a softened FAIL. See scripts/provenance-policy.mjs for
+// why the two are kept apart and where the floor is set.
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import {
+  PROVENANCE_REQUIRED_FROM,
+  Outcome,
+  EXIT,
+  classifyProvenance,
+} from "./provenance-policy.mjs";
 
-// The package directory is overridable ONLY so the three outcomes can be
-// exercised against a package that already publishes with provenance; CI passes
-// no argument and gets the real one.
+// Overridable ONLY so the outcomes can be exercised against a package that
+// already publishes with provenance; CI passes no argument and gets the real one.
 const PKG_DIR = process.argv[2] || "node_modules/@11ai/execution-governance";
-const EXPECTED_REPO = (
-  process.env.GITHUB_REPOSITORY || "11-11AI/execution-governance"
-).toLowerCase();
+const EXPECTED_REPO = process.env.GITHUB_REPOSITORY || "11-11AI/execution-governance";
+const NETWORK =
+  /ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EAI_AGAIN|network|socket hang up|503|502|504/i;
 
-const fail = (m, ...rest) => {
-  console.error(`FAIL: ${m}`);
-  rest.forEach((r) => console.error(`  ${r}`));
-  process.exit(1);
-};
-const unmeasurable = (m, ...rest) => {
-  console.error(`COULD NOT RUN: ${m}`);
-  rest.forEach((r) => console.error(`  ${r}`));
-  process.exit(3);
-};
+function report(result) {
+  const code = EXIT[result.outcome];
+  const head = result.outcome === Outcome.PASS ? "ok" : result.outcome;
+  console.log(`${head}: ${result.lines[0]}`);
+  for (const l of result.lines.slice(1)) console.log(`  ${l}`);
+  if (result.outcome === Outcome.NOT_APPLICABLE) {
+    console.log(`  provenance is required from ${PROVENANCE_REQUIRED_FROM} onward.`);
+  }
+  process.exit(code);
+}
 
 let manifest;
 try {
   manifest = JSON.parse(readFileSync(`${PKG_DIR}/package.json`, "utf8"));
 } catch {
-  unmeasurable(`${PKG_DIR} is not installed here, so there is nothing to check.`);
+  report({
+    outcome: Outcome.COULD_NOT_RUN,
+    reason: "not-installed",
+    lines: [`${PKG_DIR} is not installed here, so there is nothing to check.`],
+  });
 }
 const { name, version } = manifest;
-console.log(`checking provenance for ${name}@${version}`);
+console.log(
+  `checking provenance for ${name}@${version} (required from ${PROVENANCE_REQUIRED_FROM})`,
+);
 
-// --- 1. Is an attestation recorded for this exact version? -----------------
-const NETWORK =
-  /ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EAI_AGAIN|network|socket hang up|503|502|504/i;
-let distAtt;
+// --- gather: is an attestation recorded for this exact version? ------------
+let distAtt = null;
+let reachable = true;
 try {
   const out = execFileSync("npm", ["view", `${name}@${version}`, "dist.attestations", "--json"], {
     encoding: "utf8",
@@ -73,99 +86,98 @@ try {
   distAtt = out === "" ? null : JSON.parse(out);
 } catch (e) {
   const err = String(e.stderr ?? e.message ?? "");
-  if (NETWORK.test(err))
-    unmeasurable(
-      "the registry did not answer when asked for the attestation record.",
-      err.trim().split("\n").slice(-2).join(" | "),
+  if (/E404/.test(err)) {
+    report({
+      outcome: Outcome.FAIL,
+      reason: "not-published",
+      lines: [`${name}@${version} is not on the registry at all.`],
+    });
+  }
+  reachable = false;
+  if (!NETWORK.test(err)) {
+    // Still unmeasurable rather than a pass: the question was not answered.
+    console.log(
+      `  (registry error was not recognisably a network fault: ${err.trim().split("\n").slice(-1)[0]})`,
     );
-  if (/E404/.test(err)) fail(`${name}@${version} is not on the registry at all.`);
-  unmeasurable(
-    "could not read the attestation record from the registry.",
-    err.trim().split("\n").slice(-2).join(" | "),
-  );
+  }
 }
 
-if (!distAtt || !distAtt.url) {
-  fail(
-    `${name}@${version} has NO provenance attestation.`,
-    "The registry records only ordinary signatures for it, which every package gets",
-    "and which say nothing about where it was built.",
-    "A version published by hand cannot have one. Publish through release.yml,",
-    "which passes --provenance, and do not add a path that publishes without it.",
-  );
+// --- gather: which repository does it name? --------------------------------
+let attRepo = null;
+if (reachable && distAtt?.url) {
+  try {
+    const res = await fetch(distAtt.url);
+    if (!res.ok) {
+      reachable = false;
+    } else {
+      const bundle = await res.json();
+      const slsa = (bundle.attestations ?? []).find((a) =>
+        String(a.predicateType).includes("slsa.dev/provenance"),
+      );
+      if (slsa) {
+        const payload = JSON.parse(
+          Buffer.from(slsa.bundle.dsseEnvelope.payload, "base64").toString("utf8"),
+        );
+        attRepo =
+          payload?.predicate?.buildDefinition?.externalParameters?.workflow?.repository ?? null;
+      }
+      if (attRepo === null) {
+        report({
+          outcome: Outcome.FAIL,
+          reason: "no-slsa-statement",
+          lines: [
+            "an attestation exists but carries no SLSA provenance naming a source repository.",
+            `bundle: ${distAtt.url}`,
+          ],
+        });
+      }
+    }
+  } catch {
+    reachable = false;
+  }
 }
-console.log(`  attestation recorded: ${distAtt.url}`);
 
-// --- 2. Does it point at THIS repository? ----------------------------------
-let bundle;
-try {
-  const res = await fetch(distAtt.url);
-  if (!res.ok) unmeasurable(`the attestation service answered ${res.status} for ${distAtt.url}`);
-  bundle = await res.json();
-} catch (e) {
-  unmeasurable("could not fetch the attestation bundle.", String(e.message ?? e));
-}
+const result = classifyProvenance({
+  version,
+  hasAttestation: Boolean(distAtt?.url),
+  attestationRepo: attRepo,
+  expectedRepo: EXPECTED_REPO,
+  requiredFrom: PROVENANCE_REQUIRED_FROM,
+  registryReachable: reachable,
+});
 
-const slsa = (bundle.attestations ?? []).find((a) =>
-  String(a.predicateType).includes("slsa.dev/provenance"),
-);
-if (!slsa)
-  fail(
-    "the attestation bundle carries no SLSA provenance statement.",
-    `found: ${(bundle.attestations ?? []).map((a) => a.predicateType).join(", ") || "nothing"}`,
-  );
-
-let repo;
-try {
-  const payload = JSON.parse(
-    Buffer.from(slsa.bundle.dsseEnvelope.payload, "base64").toString("utf8"),
-  );
-  repo = payload?.predicate?.buildDefinition?.externalParameters?.workflow?.repository;
-} catch (e) {
-  fail("the SLSA provenance statement could not be parsed.", String(e.message ?? e));
-}
-if (!repo) fail("the SLSA provenance names no source repository.");
-
-const got = String(repo)
-  .replace(/^https?:\/\/github\.com\//i, "")
-  .replace(/\.git$/, "")
-  .toLowerCase();
-if (got !== EXPECTED_REPO) {
-  fail(
-    "the provenance does not link to this repository.",
-    `expected  ${EXPECTED_REPO}`,
-    `actual    ${got}  (${repo})`,
-    "An attestation pointing somewhere else proves the artifact was built somewhere else.",
-  );
-}
-console.log(`  provenance links to ${repo}`);
-
-// --- 3. Is it cryptographically valid? -------------------------------------
-// This is the half `npm audit signatures` is genuinely good at: it verifies the
-// bundle against Sigstore rather than merely observing that a URL exists.
-try {
-  const out = execFileSync("npm", ["audit", "signatures"], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  console.log(
-    out
-      .trim()
-      .split("\n")
-      .map((l) => `  | ${l}`)
-      .join("\n"),
-  );
-} catch (e) {
-  const combined = String(e.stdout ?? "") + String(e.stderr ?? "");
-  if (NETWORK.test(combined))
-    unmeasurable(
-      "npm audit signatures could not reach the registry or Sigstore.",
-      combined.trim().split("\n").slice(-3).join(" | "),
+// --- the cryptographic half, only when there is something to verify --------
+if (result.outcome === Outcome.PASS) {
+  try {
+    const out = execFileSync("npm", ["audit", "signatures"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    console.log(
+      out
+        .trim()
+        .split("\n")
+        .map((l) => `  | ${l}`)
+        .join("\n"),
     );
-  fail(
-    "npm audit signatures rejected an attestation in this tree.",
-    combined.trim().split("\n").slice(-6).join(" | "),
-  );
+  } catch (e) {
+    const combined = String(e.stdout ?? "") + String(e.stderr ?? "");
+    if (NETWORK.test(combined)) {
+      report({
+        outcome: Outcome.COULD_NOT_RUN,
+        reason: "sigstore-unreachable",
+        lines: ["npm audit signatures could not reach the registry or Sigstore."],
+      });
+    }
+    report({
+      outcome: Outcome.FAIL,
+      reason: "signature-invalid",
+      lines: [
+        "npm audit signatures rejected an attestation in this tree.",
+        combined.trim().split("\n").slice(-6).join(" | "),
+      ],
+    });
+  }
 }
 
-console.log(`ok: ${name}@${version} carries verified provenance linking to ${EXPECTED_REPO}`);
+report(result);
