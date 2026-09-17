@@ -1,0 +1,105 @@
+# Does the version currently on the public registry still behave?
+#
+# Everything else here tests a candidate: a workspace, or a tarball built from
+# one. This tests the artifact strangers actually receive, after it is public,
+# installed the way they install it. It is the only check that can catch a
+# release that was fine when built and is broken now -- a transitive dependency
+# unpublished, a registry change, a bad `files` list that only shows up once npm
+# has unpacked it somewhere else.
+#
+# THREE OUTCOMES, KEPT DISTINCT.
+#   PASS           the checks ran and held
+#   FAIL           the checks ran and did not hold
+#   COULD NOT RUN  the registry was unreachable, nothing was installed
+#
+# COULD NOT RUN is RED, with a log line saying so. A gate that goes quiet when
+# it cannot see is worse than no gate, because it is trusted. It is not
+# collapsed into "fine", and it is not collapsed into "failed" either.
+#
+# IF THIS JOB FAILS, DO NOT DEPRECATE ANYTHING. Report it. Deprecation is a
+# human decision and Brad runs `npm deprecate` himself.
+name: post-publish
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    # Daily, offset from coldstart's 06:17 so a registry hiccup does not take
+    # both out at once and read as a code failure.
+    - cron: "43 7 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  latest-still-works:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor `engines` claims, and the runtime releases are built on.
+        node: [18, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choose a project directory outside the checkout
+        run: |
+          set -euo pipefail
+          # Inside the checkout the root package.json declares workspaces, and
+          # an install would symlink packages/gate instead of fetching what was
+          # published -- which is exactly the failure this job exists to catch.
+          echo "PROJECT=$RUNNER_TEMP/post-publish-project" >> "$GITHUB_ENV"
+          echo "npm_config_cache=$RUNNER_TEMP/npm-cache-post" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          # No cache key: a warm cache would let a since-unpublished dependency
+          # resolve from disk and hide the very failure being looked for.
+          node-version: ${{ matrix.node }}
+
+      - name: Install @11ai/execution-governance@latest from the registry
+        id: install
+        run: |
+          set -euo pipefail
+          rm -rf "$npm_config_cache" "$PROJECT"
+          mkdir -p "$npm_config_cache" "$PROJECT"
+          cd "$PROJECT"
+          npm init -y > /dev/null
+
+          # A registry that does not answer is COULD NOT RUN, not a pass and
+          # not a code failure. Distinguished here, at the only place that can
+          # tell the difference.
+          if ! npm install @11ai/execution-governance@latest 2>install.log; then
+            echo "----- npm output -----"; cat install.log
+            if grep -qiE 'ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EAI_AGAIN|network|registry error|503|502' install.log; then
+              echo "::error::COULD NOT RUN: the registry was unreachable, so @latest was never installed."
+              echo "::error::This is not a pass. It is also not a failure of the published package."
+              exit 1
+            fi
+            echo "::error::FAIL: installing @11ai/execution-governance@latest failed for a non-network reason."
+            exit 1
+          fi
+
+          pkg=node_modules/@11ai/execution-governance
+          if [ -L "$pkg" ]; then
+            echo "::error::COULD NOT RUN: $pkg is a symlink -> $(readlink "$pkg"); this is not the published package"
+            exit 1
+          fi
+          echo "installed version: $(node -p "require('./$pkg/package.json').version")"
+
+      - name: Assert the published package's shape and run every bin
+        working-directory: ${{ env.PROJECT }}
+        run: |
+          set -euo pipefail
+          # Exactly the assertions coldstart runs, against @latest rather than
+          # against whatever this branch would produce. Shared so the two cannot
+          # drift into disagreeing about what "works" means.
+          set +e
+          bash "$GITHUB_WORKSPACE/scripts/verify-installed-package.sh"
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "PASS: the published package holds" ;;
+            3) echo "::error::COULD NOT RUN: the assertions never executed. Not a pass."; exit 1 ;;
+            *) echo "::error::FAIL: the published package did not hold (exit $code). Report it; do not deprecate anything."; exit 1 ;;
+          esac

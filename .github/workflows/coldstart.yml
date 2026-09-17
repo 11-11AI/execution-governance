@@ -94,6 +94,33 @@ jobs:
           # The bin shim is part of the published artifact and is what step 4 runs.
           test -x node_modules/.bin/eg-verify || { echo "FAIL: eg-verify shim missing"; exit 1; }
 
+      - name: Assert the installed package's shape and run every bin
+        working-directory: ${{ env.PROJECT }}
+        run: |
+          set -euo pipefail
+          # eg-conform and eg-demo were invoked by no CI job at all until this
+          # step existed. The quickstart exercises eg-verify and nothing else,
+          # so two of the three published bins had never been run outside the
+          # workspace by anything but a human.
+          #
+          # NOTE ON `npm install` ABOVE, WHICH STAYS.
+          # This job's purpose is to reproduce what a user does, and a user runs
+          # `npm install`. `npm ci` would have caught 0.4.0's self-dependency,
+          # but making this job stricter than reality would stop it testing
+          # reality. The answer is to assert on the resulting tree instead,
+          # which is what the script below does.
+          #
+          # Exit 3 is COULD NOT RUN, and it is red, not green.
+          set +e
+          bash "$GITHUB_WORKSPACE/scripts/verify-installed-package.sh"
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "PASS: the installed package holds" ;;
+            3) echo "::error::COULD NOT RUN: the assertions never executed. Not a pass."; exit 1 ;;
+            *) echo "::error::FAIL: the installed package did not hold (exit $code)"; exit 1 ;;
+          esac
+
       - name: Run the README quickstart against the published package
         working-directory: ${{ env.PROJECT }}
         run: |
