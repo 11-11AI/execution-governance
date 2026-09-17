@@ -17,18 +17,35 @@
 /**
  * The first version that MUST carry a provenance attestation.
  *
- * 0.4.1 was the last hand-published release, so 0.4.2 is the smallest version
- * that can only have come from CI. Choosing the floor this way rather than
- * guessing the next version number means it stays correct whether the next
- * release is 0.4.2, 0.5.0 or 1.0.0: everything at or above it must prove where
- * it was built.
+ * 0.4.1 was the last hand-published release, so the floor is the next possible
+ * version. Choosing it that way rather than guessing the next release NUMBER
+ * means it stays correct whether that turns out to be 0.4.2, 0.5.0 or 1.0.0.
+ *
+ * DO NOT "TIDY" THE `-0`. IT IS LOAD-BEARING.
+ *
+ * Under semver a prerelease sorts BELOW its own release: 0.4.2-rc.1 < 0.4.2.
+ * With a floor of plain "0.4.2", a release candidate for the very first CI
+ * release -- the single most likely first use of this pipeline -- compared as
+ * below the floor and was reported NOT_APPLICABLE with exit 0. It would have
+ * been waved through with no provenance and no complaint.
+ *
+ * "0.4.2-0" is the LOWEST POSSIBLE 0.4.2 prerelease, because numeric
+ * prerelease identifiers sort below alphanumeric ones, so 0.4.2-0 precedes
+ * 0.4.2-alpha.1 and 0.4.2-rc.1 and 0.4.2 itself. Every 0.4.2 of any shape is
+ * therefore at or above the floor. This is the same idiom npm uses in ranges
+ * like ">=1.2.3-0".
+ *
+ * There is a test asserting the floor carries a prerelease component, and
+ * tests asserting 0.4.2-rc.1, 0.4.2-alpha.1 and 0.4.2-0 all FAIL when their
+ * attestation is absent. Removing the `-0` breaks them, which is the point: a
+ * comment can be ignored, a red build cannot.
  *
  * An exact semver string, deliberately. Not a date, not a comparison against
  * when the workflow landed, not a heuristic. If this is ever unset, empty or
  * unparseable that is a FAIL in itself -- the escape hatch must not be openable
  * by leaving a value blank.
  */
-export const PROVENANCE_REQUIRED_FROM = "0.4.2";
+export const PROVENANCE_REQUIRED_FROM = "0.4.2-0";
 
 export const Outcome = Object.freeze({
   PASS: "PASS",
