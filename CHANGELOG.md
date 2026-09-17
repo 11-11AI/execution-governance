@@ -44,6 +44,18 @@ bumps the major.
 - All three bins are exercised against the packed artifact before publication
   and against the published package afterwards. `eg-conform` and `eg-demo` were
   run by no CI job at all before this.
+- The published provenance attestation is verified: looked up for this package
+  by name and version, its SLSA statement parsed, and the repository it names
+  compared against this one. `npm audit signatures` alone cannot do this --
+  against this tree it reports one verified attestation and exits 0, and the one
+  is `@noble/hashes`.
+- Provenance uses the same state model this product enforces on its users.
+  A version below `PROVENANCE_REQUIRED_FROM` with no attestation is
+  NOT_APPLICABLE, because no claim was made for it; at or above that floor, an
+  absent attestation is a FAIL, because the claim was made and the evidence is
+  missing. Those are different facts and the job does not merge them. An unset,
+  empty or unparseable floor is itself a FAIL, so the exemption cannot be opened
+  by leaving a value blank.
 - A sabotage test for every conformance rule, and a coverage assertion that
   fails the build on any rule the checker can emit that no test makes fail.
   R03, R06, R08 and R10 had none: implemented, passing on every run, never once

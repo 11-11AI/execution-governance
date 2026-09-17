@@ -114,12 +114,18 @@ jobs:
           # command reports "1 package has a verified attestation" and exits 0,
           # and the one is @noble/hashes. A bare exit-code check would go green
           # exactly when the property it guarantees is missing.
+          # Four outcomes, and exit 0 covers two of them. The script's own
+          # output says which -- PASS or NOT_APPLICABLE -- and this wrapper must
+          # not relabel both as PASS. 0.4.1 has no attestation because none was
+          # ever claimed for it; that is NOT_APPLICABLE, not a failure, and not
+          # a pass either. The floor is a single exact semver constant in
+          # scripts/provenance-policy.mjs.
           set +e
           node "$GITHUB_WORKSPACE/scripts/verify-provenance.mjs"
           code=$?
           set -e
           case "$code" in
-            0) echo "PASS: published provenance verified against this repository" ;;
+            0) echo "verdict above is PASS or NOT_APPLICABLE; neither is a failure" ;;
             3) echo "::error::COULD NOT RUN: provenance could not be checked. Not a pass."; exit 1 ;;
-            *) echo "::error::FAIL: the published package's provenance is absent, unverifiable, or points elsewhere. Report it; do not deprecate anything."; exit 1 ;;
+            *) echo "::error::FAIL: provenance is claimed-and-absent, or points at another repository. Report it; do not deprecate anything."; exit 1 ;;
           esac
